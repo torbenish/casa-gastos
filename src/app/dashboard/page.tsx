@@ -1,22 +1,22 @@
 "use client";
 
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Receipt,
+  TrendingDown,
+  UserCheck,
+  Wallet,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase";
+import { Cell, Pie, PieChart } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { PieChart, Pie, Cell } from "recharts";
-import {
-  TrendingDown,
-  Wallet,
-  UserCheck,
-  Receipt,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 const COLORS = [
   "#7c3aed",

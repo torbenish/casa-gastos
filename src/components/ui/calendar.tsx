@@ -1,9 +1,9 @@
 "use client";
 
-import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import * as React from "react";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type CalendarProps = {
   selected?: Date;
@@ -155,4 +155,5 @@ function Calendar({ selected, onSelect, className }: CalendarProps) {
 }
 
 Calendar.displayName = "Calendar";
+
 export { Calendar };

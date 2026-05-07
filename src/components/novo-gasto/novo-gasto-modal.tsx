@@ -1,17 +1,17 @@
 "use client";
 
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Copy } from "lucide-react";
+import { CalendarIcon, Copy, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -24,16 +24,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
+import { CampoCartao } from "./components/campo-cartao";
+import { CampoLocal } from "./components/campo-local";
+import { useNovoGasto } from "./hooks/use-novo-gasto";
 import {
   type Category,
   formatCurrency,
-  parseCurrency,
   PAYMENT_METHODS,
+  parseCurrency,
 } from "./types";
-import { useNovoGasto } from "./hooks/use-novo-gasto";
-import { CampoLocal } from "./components/campo-local";
-import { CampoCartao } from "./components/campo-cartao";
 
 type Props = {
   open: boolean;

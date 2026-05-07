@@ -1,21 +1,19 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Receipt,
-  ShoppingCart,
   BarChart3,
-  LogOut,
   Home,
+  LayoutDashboard,
+  LogOut,
+  Receipt,
   Settings,
+  ShoppingCart,
 } from "lucide-react";
-
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
-import { ThemeToggle } from "./theme/theme-toggle";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./theme/theme-toggle";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },

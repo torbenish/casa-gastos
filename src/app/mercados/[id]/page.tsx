@@ -1,20 +1,29 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AlertCircle,
+  ArrowDownRight,
+  ArrowLeft,
+  ArrowUpRight,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  MapPin,
+  Minus,
+  Package,
+  Search,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+} from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,23 +32,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  MapPin,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  ShoppingCart,
-  Search,
-  Calendar,
-  Package,
-  ArrowUpRight,
-  ArrowDownRight,
-  Trophy,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  ArrowLeft,
-  Info,
-} from "lucide-react";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { createClient } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -500,7 +500,7 @@ export default function MercadoDetalhesPage() {
         const maxRecord = sorted.find((r) => r.price === maxPrice);
 
         if (!minRecord || !maxRecord) {
-          continue; 
+          continue;
         }
         const currentPrice = sorted[sorted.length - 1].price;
         const prevPrice =

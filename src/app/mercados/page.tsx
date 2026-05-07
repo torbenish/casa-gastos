@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
-  MapPin,
-  ShoppingCart,
-  TrendingDown,
-  ChevronRight,
-  Search,
-  Store,
-  Package,
   AlertCircle,
+  ChevronRight,
+  MapPin,
+  Package,
+  Search,
+  ShoppingCart,
+  Store,
+  TrendingDown,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { createClient } from "@/lib/supabase";
 
 type PlaceSummary = {
   id: string;

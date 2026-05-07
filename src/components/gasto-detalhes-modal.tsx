@@ -1,28 +1,28 @@
 "use client";
 
+import {
+  Calendar,
+  CreditCard,
+  FileText,
+  Hash,
+  Layers,
+  MapPin,
+  Package,
+  Receipt,
+  Scale,
+  ShoppingCart,
+  Tag,
+  User,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import {
-  MapPin,
-  CreditCard,
-  User,
-  Calendar,
-  Tag,
-  ShoppingCart,
-  FileText,
-  Receipt,
-  Hash,
-  Layers,
-  Scale,
-  Package,
-} from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -113,7 +113,6 @@ type Props = {
 export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
   const [details, setDetails] = useState<ExpenseDetails | null>(null);
   const [loading, setLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>("");
   const supabase = createClient();
 
   useEffect(() => {
@@ -122,7 +121,6 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
     async function load() {
       setLoading(true);
       setDetails(null);
-      setDebugInfo("");
 
       // 1. Gasto principal
       const { data: expense } = await supabase
@@ -188,7 +186,6 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
         2,
       );
       console.log("[GastoDetalhes DEBUG]", debugText);
-      setDebugInfo(debugText);
 
       // 3. Para cada item, busca nome do produto separadamente se houver product_id
       const rawItems = itemsRes.data ?? [];
@@ -295,7 +292,7 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
                 <p className="text-xs text-muted-foreground mt-1">
                   Total:{" "}
                   {(
-                    Number(details.amount) * details.installments!
+                    Number(details.amount) * (details.installments ?? 1)
                   ).toLocaleString("pt-BR", {
                     style: "currency",
                     currency: "BRL",

@@ -1,9 +1,23 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { createClient } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  Calendar,
+  FileDown,
+  Loader2,
+  Minus,
+  Receipt,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -20,21 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  FileDown,
-  BarChart3,
-  ArrowUpRight,
-  ArrowDownRight,
-  Receipt,
-  Wallet,
-  Users,
-  Calendar,
-  Loader2,
-} from "lucide-react";
-import { toast } from "sonner";
+import { createClient } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
+import { Eye, Plus, Receipt, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { GastoDetalhesModal } from "@/components/gasto-detalhes-modal";
+import { NovoGastoModal } from "@/components/novo-gasto";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -12,9 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Receipt, Eye } from "lucide-react";
-import { NovoGastoModal } from "@/components/novo-gasto";
-import { GastoDetalhesModal } from "@/components/gasto-detalhes-modal";
+import { createClient } from "@/lib/supabase";
 
 type Expense = {
   id: string;
