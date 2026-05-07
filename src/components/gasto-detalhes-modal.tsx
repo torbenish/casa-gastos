@@ -85,11 +85,20 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 const PLACE_TYPES: Record<string, string> = {
   mercado: "Mercado",
-  farmacia: "Farmacia",
-  posto: "Posto",
   restaurante: "Restaurante",
+  farmacia: "Farmácia",
+  saude: "Saúde",
+  combustivel: "Combustível",
+  transporte: "Transporte",
+  moradia: "Moradia",
+  veiculo: "Veículo",
   lazer: "Lazer",
-  servico: "Servico",
+  assinaturas: "Assinaturas",
+  compras: "Compras",
+  educacao: "Educação",
+  pets: "Pets",
+  servicos_pessoais: "Serviços Pessoais",
+  impostos_taxas: "Impostos/Taxas",
   outro: "Outro",
 };
 

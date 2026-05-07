@@ -41,10 +41,19 @@ import {
   Fuel,
   Utensils,
   Gamepad2,
-  Wrench,
   MoreHorizontal,
   Settings,
   Star,
+  Receipt,
+  Scissors,
+  PawPrint,
+  GraduationCap,
+  ShoppingBag,
+  Repeat,
+  Car,
+  Home,
+  Bus,
+  HeartPulse,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -72,23 +81,47 @@ const PLACE_TYPES = [
     color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
   },
   {
+    value: "restaurante",
+    label: "Restaurante",
+    icon: Utensils,
+    color: "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300",
+  },
+  {
     value: "farmacia",
     label: "Farmácia",
     icon: Pill,
     color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   },
   {
-    value: "posto",
-    label: "Posto",
+    value: "saude",
+    label: "Saúde",
+    icon: HeartPulse,
+    color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+  },
+  {
+    value: "combustivel",
+    label: "Combustível",
     icon: Fuel,
     color:
       "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
   },
   {
-    value: "restaurante",
-    label: "Restaurante",
-    icon: Utensils,
-    color: "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300",
+    value: "transporte",
+    label: "Transporte",
+    icon: Bus,
+    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
+  },
+  {
+    value: "moradia",
+    label: "Moradia",
+    icon: Home,
+    color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
+  },
+  {
+    value: "veiculo",
+    label: "Veículo",
+    icon: Car,
+    color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
   },
   {
     value: "lazer",
@@ -98,11 +131,42 @@ const PLACE_TYPES = [
       "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
   },
   {
-    value: "servico",
-    label: "Serviço",
-    icon: Wrench,
+    value: "assinaturas",
+    label: "Assinaturas",
+    icon: Repeat,
+    color:
+      "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+  },
+  {
+    value: "compras",
+    label: "Compras",
+    icon: ShoppingBag,
+    color: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+  },
+  {
+    value: "educacao",
+    label: "Educação",
+    icon: GraduationCap,
+    color: "bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300",
+  },
+  {
+    value: "pets",
+    label: "Pets",
+    icon: PawPrint,
+    color: "bg-lime-100 text-lime-700 dark:bg-lime-900 dark:text-lime-300",
+  },
+  {
+    value: "servicos_pessoais",
+    label: "Serviços Pessoais",
+    icon: Scissors,
     color:
       "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+  },
+  {
+    value: "impostos_taxas",
+    label: "Impostos/Taxas",
+    icon: Receipt,
+    color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   },
   {
     value: "outro",
@@ -409,7 +473,7 @@ function LocalesSection() {
       .every((term) => normalizeText(p.name).includes(term));
 
     const matchType = filterType === "all" || p.type === filterType;
-    
+
     return matchSearch && matchType;
   });
 

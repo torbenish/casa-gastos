@@ -62,11 +62,20 @@ export type PlaceWithExpenses = {
 
 export const PLACE_TYPES: Record<string, string> = {
   mercado: "Mercado",
-  farmacia: "Farmácia",
-  posto: "Posto",
   restaurante: "Restaurante",
+  farmacia: "Farmácia",
+  saude: "Saúde",
+  combustivel: "Combustível",
+  transporte: "Transporte",
+  moradia: "Moradia",
+  veiculo: "Veículo",
   lazer: "Lazer",
-  servico: "Serviço",
+  assinaturas: "Assinaturas",
+  compras: "Compras",
+  educacao: "Educação",
+  pets: "Pets",
+  servicos_pessoais: "Serviços Pessoais",
+  impostos_taxas: "Impostos/Taxas",
   outro: "Outro",
 };
 
