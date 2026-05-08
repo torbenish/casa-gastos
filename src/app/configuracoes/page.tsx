@@ -5,21 +5,14 @@ import {
   Car,
   Fuel,
   Gamepad2,
-  GraduationCap,
   HeartPulse,
   Home,
   MapPin,
   MoreHorizontal,
-  PawPrint,
   Pencil,
-  Pill,
   Plus,
-  Receipt,
-  Repeat,
-  Scissors,
   Search,
   Settings,
-  ShoppingBag,
   ShoppingCart,
   Star,
   Store,
@@ -55,14 +48,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type PlaceType =
+  | "mercado"
+  | "restaurante"
+  | "saude"
+  | "combustivel"
+  | "transporte"
+  | "moradia"
+  | "veiculo"
+  | "lazer"
+  | "outro";
+
 type Place = {
   id: string;
   name: string;
-  type: string;
+  type: PlaceType;
   created_at: string;
   usageCount?: number;
   lastUsedAt?: string | null;
@@ -85,12 +90,6 @@ const PLACE_TYPES = [
     label: "Restaurante",
     icon: Utensils,
     color: "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300",
-  },
-  {
-    value: "farmacia",
-    label: "Farmácia",
-    icon: Pill,
-    color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   },
   {
     value: "saude",
@@ -129,44 +128,6 @@ const PLACE_TYPES = [
     icon: Gamepad2,
     color:
       "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  },
-  {
-    value: "assinaturas",
-    label: "Assinaturas",
-    icon: Repeat,
-    color:
-      "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
-  },
-  {
-    value: "compras",
-    label: "Compras",
-    icon: ShoppingBag,
-    color: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
-  },
-  {
-    value: "educacao",
-    label: "Educação",
-    icon: GraduationCap,
-    color: "bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300",
-  },
-  {
-    value: "pets",
-    label: "Pets",
-    icon: PawPrint,
-    color: "bg-lime-100 text-lime-700 dark:bg-lime-900 dark:text-lime-300",
-  },
-  {
-    value: "servicos_pessoais",
-    label: "Serviços Pessoais",
-    icon: Scissors,
-    color:
-      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  },
-  {
-    value: "impostos_taxas",
-    label: "Impostos/Taxas",
-    icon: Receipt,
-    color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   },
   {
     value: "outro",
@@ -217,14 +178,14 @@ function PlaceModal({
   onSaved,
 }: PlaceModalProps) {
   const [name, setName] = useState("");
-  const [type, setType] = useState("mercado");
+  const [type, setType] = useState<PlaceType>("outro");
   const [saving, setSaving] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
     if (open) {
       setName(place?.name ?? "");
-      setType(place?.type ?? "mercado");
+      setType((place?.type as PlaceType) ?? "outro");
     }
   }, [open, place]);
 
@@ -305,7 +266,10 @@ function PlaceModal({
 
           <div className="space-y-1.5">
             <Label>Categoria *</Label>
-            <Select value={type} onValueChange={setType}>
+            <Select
+              value={type}
+              onValueChange={(value) => setType(value as PlaceType)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -366,7 +330,7 @@ function PlaceModal({
 type PlaceWithExpenses = {
   id: string;
   name: string;
-  type: string;
+  type: PlaceType;
   created_at: string;
   is_favorite: boolean;
   expenses: {
@@ -379,7 +343,7 @@ function LocalesSection() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
+  const [filterType, setFilterType] = useState<PlaceType | "all">("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [deletingPlace, setDeletingPlace] = useState<Place | null>(null);
@@ -401,7 +365,7 @@ function LocalesSection() {
       .order("name");
     if (data) {
       const typedData = data as PlaceWithExpenses[];
-      const enriched = typedData.map((place) => {
+      const enriched: Place[] = typedData.map((place) => {
         const expenses = place.expenses ?? [];
 
         const sortedExpenses = [...expenses].sort(
@@ -519,7 +483,10 @@ function LocalesSection() {
           />
         </div>
 
-        <Select value={filterType} onValueChange={setFilterType}>
+        <Select
+          value={filterType}
+          onValueChange={(value) => setFilterType(value as PlaceType | "all")}
+        >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
@@ -748,26 +715,23 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b">
-        <div className="flex gap-1">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as Tab)}
+      >
+        <TabsList className="grid w-fit grid-cols-1">
           {TABS.map((tab) => (
-            <button
+            <TabsTrigger
               key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                activeTab === tab.id
-                  ? "border-violet-600 text-violet-600"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground"
-              }`}
+              value={tab.id}
+              className="flex items-center gap-2"
             >
               {tab.icon}
               {tab.label}
-            </button>
+            </TabsTrigger>
           ))}
-        </div>
-      </div>
+        </TabsList>
+      </Tabs>
 
       {/* Conteúdo da aba */}
       <div>{activeTab === "locais" && <LocalesSection />}</div>

@@ -52,7 +52,7 @@ type ExpenseDetails = {
   parent_expense_id: string | null;
   categoryName: string;
   placeName: string | null;
-  placeType: string | null;
+  placeKind: string | null;
   paidByName: string | null;
   cardName: string | null;
   cardType: string | null;
@@ -86,19 +86,12 @@ const PAYMENT_LABELS: Record<string, string> = {
 const PLACE_TYPES: Record<string, string> = {
   mercado: "Mercado",
   restaurante: "Restaurante",
-  farmacia: "Farmácia",
   saude: "Saúde",
   combustivel: "Combustível",
   transporte: "Transporte",
   moradia: "Moradia",
   veiculo: "Veículo",
   lazer: "Lazer",
-  assinaturas: "Assinaturas",
-  compras: "Compras",
-  educacao: "Educação",
-  pets: "Pets",
-  servicos_pessoais: "Serviços Pessoais",
-  impostos_taxas: "Impostos/Taxas",
   outro: "Outro",
 };
 
@@ -122,7 +115,6 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
       setLoading(true);
       setDetails(null);
 
-      // 1. Gasto principal
       const { data: expense } = await supabase
         .from("expenses")
         .select(
@@ -136,7 +128,6 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
         return;
       }
 
-      // 2. Dados relacionados em paralelo
       const [catRes, placeRes, userRes, cardRes, itemsRes] = await Promise.all([
         expense.category_id
           ? supabase
@@ -170,24 +161,9 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
               .single()
           : Promise.resolve({ data: null }),
 
-        // Busca itens sem join primeiro para diagnosticar
         supabase.from("expense_items").select("*").eq("expense_id", expenseId),
       ]);
 
-      // DEBUG: mostra o que veio cru do banco
-      const debugText = JSON.stringify(
-        {
-          expense_id: expenseId,
-          items_count: itemsRes.data?.length ?? 0,
-          items_error: itemsRes.error,
-          items_raw: itemsRes.data,
-        },
-        null,
-        2,
-      );
-      console.log("[GastoDetalhes DEBUG]", debugText);
-
-      // 3. Para cada item, busca nome do produto separadamente se houver product_id
       const rawItems = itemsRes.data ?? [];
 
       const normalizedItems: ExpenseItem[] = await Promise.all(
@@ -222,7 +198,7 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
         ...expense,
         categoryName: catRes.data?.name ?? "Sem categoria",
         placeName: placeRes.data?.name ?? null,
-        placeType: (placeRes.data as { type?: string } | null)?.type ?? null,
+        placeKind: (placeRes.data as { type?: string } | null)?.type ?? null,
         paidByName: userRes.data?.name ?? null,
         cardName: cardRes.data?.name ?? null,
         cardType:
@@ -351,8 +327,8 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
                   icon={<MapPin className="w-4 h-4" />}
                   label="Local"
                   value={
-                    details.placeType
-                      ? `${details.placeName} - ${PLACE_TYPES[details.placeType] ?? details.placeType}`
+                    details.placeKind
+                      ? `${details.placeName} - ${PLACE_TYPES[details.placeKind] ?? details.placeKind}`
                       : details.placeName
                   }
                 />
@@ -399,8 +375,7 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
                               <Package className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                             )}
                             <span className="text-sm font-medium truncate">
-                              {item.productName ??
-                                `Produto ${item.product_id?.slice(0, 8) ?? "sem ID"}`}
+                              {item.productName ?? "Produto sem nome"}
                             </span>
                           </div>
                           <span className="text-sm font-bold text-violet-600 shrink-0">
@@ -507,7 +482,7 @@ function Row({
       <div className="text-muted-foreground mt-0.5 shrink-0">{icon}</div>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium capitalize">{value}</p>
+        <p className="text-sm font-medium">{value}</p>
       </div>
     </div>
   );

@@ -14,10 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase";
-import { type Category, PLACE_TYPES, type Place } from "../types";
+import { PLACE_TYPES, type Place } from "../types";
 
 type Props = {
-  selectedCategory: Category;
   placeSearch: string;
   setPlaceSearch: (v: string) => void;
   placeId: string;
@@ -27,10 +26,8 @@ type Props = {
 };
 
 export function CampoLocal({
-  selectedCategory,
   placeSearch,
   setPlaceSearch,
-  placeId,
   setPlaceId,
   allPlaces,
   setAllPlaces,
@@ -40,9 +37,7 @@ export function CampoLocal({
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newPlaceName, setNewPlaceName] = useState("");
-  const [newPlaceType, setNewPlaceType] = useState(
-    selectedCategory.place_type ?? "outro",
-  );
+  const [newPlaceType, setNewPlaceType] = useState("outro");
   const [savingPlace, setSavingPlace] = useState(false);
 
   function normalizeText(text: string) {
@@ -55,17 +50,13 @@ export function CampoLocal({
 
   const filteredPlaces = allPlaces
     .filter((p) => {
-      const matchesType = selectedCategory.place_type
-        ? p.type === selectedCategory.place_type
-        : true;
-
       const search = normalizeText(placeSearch);
 
       const matchesSearch =
         search === "" ||
         search.split(" ").every((term) => normalizeText(p.name).includes(term));
 
-      return matchesType && matchesSearch;
+      return matchesSearch;
     })
     .sort((a, b) => {
       // ⭐ favoritos primeiro
@@ -118,6 +109,10 @@ export function CampoLocal({
     setSavingPlace(false);
   }
 
+  const exactMatch = allPlaces.some(
+    (p) => normalizeText(p.name) === normalizeText(placeSearch),
+  );
+
   return (
     <div className="space-y-1">
       <Label>
@@ -134,24 +129,23 @@ export function CampoLocal({
               setShowDropdown(true);
             }}
             onFocus={() => setShowDropdown(true)}
-            placeholder={
-              selectedCategory.place_type
-                ? `Buscar ${PLACE_TYPES[selectedCategory.place_type] ?? "local"}...`
-                : "Buscar local..."
-            }
+            placeholder="Buscar local..."
             className="pl-9"
           />
-          {placeSearch && (
-            <button
+          {placeSearch.trim() && !exactMatch && (
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => {
-                setPlaceId("");
-                setPlaceSearch("");
+                setNewPlaceName(placeSearch);
+                setShowNewForm(true);
+                setShowDropdown(false);
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+              className="w-full justify-start gap-2 rounded-none border-t border-border text-violet-600 hover:text-violet-700"
             >
-              ✕
-            </button>
+              <Plus className="w-3 h-3" />
+              Cadastrar novo local
+            </Button>
           )}
         </div>
 

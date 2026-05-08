@@ -66,6 +66,10 @@ export function useNovoGasto(
     isCredit ? c.card_type === "credito" : c.card_type === "vale_alimentacao",
   );
 
+  const selectedPlace = allPlaces.find((p) => p.id === placeId);
+
+  const isMarketPlace = selectedPlace?.type === "mercado";
+
   const selectedCard = creditCards.find((c) => c.id === creditCardId);
   const billingPreview =
     needsCard && selectedCard
@@ -175,14 +179,18 @@ export function useNovoGasto(
   function handleCategoryChange(id: string) {
     setCategoryId(id);
     validateField("categoryId", id);
+
     const cat = categories.find((c) => c.id === id);
+
     if (cat) {
       setSelectedCategory(cat);
       setScope(cat.default_scope === "joint" ? "joint" : "individual");
       setPlaceId("");
       setPlaceSearch("");
-      if (cat.type === "alimentacao") setPaymentMethod("vale_alimentacao");
-      if (cat.place_type === "mercado") setAmount("");
+
+      if (cat.type === "alimentacao") {
+        setPaymentMethod("vale_alimentacao");
+      }
     }
   }
 
@@ -288,10 +296,7 @@ export function useNovoGasto(
   async function handleSave() {
     const errors: FieldErrors = {};
     if (!description.trim()) errors.description = "Descricao e obrigatoria";
-    if (
-      selectedCategory?.place_type !== "mercado" &&
-      parseCurrency(amount) <= 0
-    ) {
+    if (!isMarketPlace && parseCurrency(amount) <= 0) {
       errors.amount = "Informe um valor valido";
     }
     if (!categoryId) errors.categoryId = "Selecione uma categoria";
@@ -310,7 +315,7 @@ export function useNovoGasto(
 
     setLoading(true);
 
-    if (selectedCategory?.place_type === "mercado") {
+    if (isMarketPlace) {
       const hasInvalidItem = items.some((item) => {
         if (item.measurement_type === "weight") {
           return (
@@ -338,7 +343,7 @@ export function useNovoGasto(
     const finalPaidBy = isAdmin ? paidById : currentUserId;
 
     let totalAmount = parseCurrency(amount);
-    if (selectedCategory?.place_type === "mercado" && items.length > 0) {
+    if (isMarketPlace && items.length > 0) {
       totalAmount = calculateItemsTotal(items);
     }
 
@@ -402,13 +407,9 @@ export function useNovoGasto(
       return;
     }
 
-    // Salvar itens de mercado
-    // Para cada item: resolve o product_id a partir do nome digitado (cria produto se necessario)
-    if (selectedCategory?.place_type === "mercado" && items.length > 0) {
+    if (isMarketPlace && items.length > 0) {
       const resolvedItems = await Promise.all(
         items.map(async (item) => {
-          // Se ja tem product_id (selecionado de produto existente), usa direto.
-          // Senao, busca/cria pelo nome digitado.
           const productId = item.product_id
             ? item.product_id
             : await getOrCreateProduct(item.name ?? "");
@@ -539,6 +540,8 @@ export function useNovoGasto(
     needsCard,
     availableCards,
     billingPreview,
+    selectedPlace,
+    isMarketPlace,
     handleAmountChange,
     handleCategoryChange,
     handleDuplicateLastExpense,

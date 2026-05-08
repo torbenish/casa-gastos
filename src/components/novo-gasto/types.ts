@@ -1,9 +1,31 @@
+export type CategoryType =
+  | "alimentacao"
+  | "moradia"
+  | "transporte"
+  | "veiculo"
+  | "saude"
+  | "lazer"
+  | "financeiro"
+  | "outros";
+
+export type PlaceType =
+  | "mercado"
+  | "restaurante"
+  | "saude"
+  | "combustivel"
+  | "transporte"
+  | "moradia"
+  | "veiculo"
+  | "lazer"
+  | "outro";
+
+export type ScopeType = "joint" | "mine" | "hers";
+
 export type Category = {
   id: string;
   name: string;
-  type: string;
-  default_scope: string;
-  place_type: string | null;
+  type: CategoryType;
+  default_scope: ScopeType;
 };
 
 export type User = {
@@ -14,9 +36,10 @@ export type User = {
 export type Place = {
   id: string;
   name: string;
-  type: string;
+  type: PlaceType;
   is_favorite?: boolean;
   usageCount?: number;
+  lastUsedAt?: string | null;
 };
 
 export type CreditCard = {
@@ -53,33 +76,37 @@ export type MarketItem = {
 export type PlaceWithExpenses = {
   id: string;
   name: string;
-  type: string;
+  type: PlaceType;
   is_favorite: boolean;
   expenses: {
     id: string;
   }[];
 };
 
-export const PLACE_TYPES: Record<string, string> = {
+export const PLACE_TYPES: Record<PlaceType, string> = {
   mercado: "Mercado",
   restaurante: "Restaurante",
-  farmacia: "Farmácia",
   saude: "Saúde",
   combustivel: "Combustível",
   transporte: "Transporte",
   moradia: "Moradia",
   veiculo: "Veículo",
   lazer: "Lazer",
-  assinaturas: "Assinaturas",
-  compras: "Compras",
-  educacao: "Educação",
-  pets: "Pets",
-  servicos_pessoais: "Serviços Pessoais",
-  impostos_taxas: "Impostos/Taxas",
   outro: "Outro",
 };
 
-export const PAYMENT_METHODS = [
+export type PaymentMethod =
+  | "pix"
+  | "debito"
+  | "dinheiro"
+  | "transferencia"
+  | "credito"
+  | "vale_alimentacao";
+
+export const PAYMENT_METHODS: {
+  value: PaymentMethod;
+  label: string;
+}[] = [
   { value: "pix", label: "PIX" },
   { value: "debito", label: "Débito" },
   { value: "dinheiro", label: "Dinheiro" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { CalendarIcon, Copy, Loader2 } from "lucide-react";
+import { CalendarIcon, Copy, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -147,7 +147,6 @@ export function NovoGastoModal({ open, onClose, onSaved, categories }: Props) {
           {/* Local */}
           {g.selectedCategory && (
             <CampoLocal
-              selectedCategory={g.selectedCategory}
               placeSearch={g.placeSearch}
               setPlaceSearch={g.setPlaceSearch}
               placeId={g.placeId}
@@ -157,7 +156,7 @@ export function NovoGastoModal({ open, onClose, onSaved, categories }: Props) {
             />
           )}
 
-          {g.selectedCategory?.place_type === "mercado" && (
+          {g.isMarketPlace && (
             <div className="space-y-2">
               <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground px-1">
                 <span className="col-span-5">Produto</span>
@@ -337,12 +336,13 @@ export function NovoGastoModal({ open, onClose, onSaved, categories }: Props) {
                   ])
                 }
               >
-                + Adicionar item
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar item
               </Button>
             </div>
           )}
 
-          {g.selectedCategory?.place_type !== "mercado" && (
+          {!g.isMarketPlace && (
             <div className="space-y-1">
               <Label>Valor (R$) *</Label>
               <Input
@@ -353,7 +353,7 @@ export function NovoGastoModal({ open, onClose, onSaved, categories }: Props) {
             </div>
           )}
 
-          {g.selectedCategory?.place_type === "mercado" && (
+          {g.isMarketPlace && (
             <div className="flex justify-between items-center py-2 border-t">
               <span>Total da compra</span>
 

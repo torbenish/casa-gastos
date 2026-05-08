@@ -1,9 +1,26 @@
 "use client";
 
-import { Eye, Plus, Receipt, Trash2 } from "lucide-react";
+import {
+  Car,
+  Eye,
+  Fuel,
+  Home,
+  PartyPopper,
+  Pill,
+  Plus,
+  Receipt,
+  ShoppingCart,
+  Trash2,
+  UtensilsCrossed,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { GastoDetalhesModal } from "@/components/gasto-detalhes-modal";
 import { NovoGastoModal } from "@/components/novo-gasto";
+import type {
+  Category,
+  PlaceType,
+  ScopeType,
+} from "@/components/novo-gasto/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,27 +38,24 @@ type Expense = {
   description: string;
   amount: number;
   date: string;
-  scope: string;
+  scope: ScopeType;
   notes: string | null;
   receipt_url: string | null;
   category_id?: string;
   paid_by?: string;
+  place_id?: string;
 
   parent_expense_id?: string | null;
   installment_number?: number;
   installments?: number;
 
-  // CORREÇÃO: categories e paid_by_user são OBJETOS, não arrays
   categories: { id: string; name: string } | null;
   paid_by_user: { id: string; name: string } | null;
-};
-
-type Category = {
-  id: string;
-  name: string;
-  type: string;
-  default_scope: string;
-  place_type: string | null;
+  place: {
+    id: string;
+    name: string;
+    type: PlaceType;
+  } | null;
 };
 
 const MONTHS = [
@@ -59,17 +73,44 @@ const MONTHS = [
   "Dezembro",
 ];
 
-const scopeLabel: Record<string, string> = {
+const scopeLabel: Record<ScopeType, string> = {
   joint: "Conjunto",
-  mine: "Individual",
-  hers: "Individual",
+  mine: "Meu",
+  hers: "Dela",
 };
 
-const scopeColor: Record<string, string> = {
+const scopeColor: Record<ScopeType, string> = {
   joint:
     "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300",
   mine: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   hers: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+};
+
+const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
+  mercado: "Mercado",
+  restaurante: "Restaurante",
+  saude: "Saúde",
+  combustivel: "Combustível",
+  transporte: "Transporte",
+  moradia: "Moradia",
+  veiculo: "Veículo",
+  lazer: "Lazer",
+  outro: "Outro",
+};
+
+const PLACE_TYPE_ICONS: Record<
+  PlaceType,
+  React.ComponentType<{ className?: string }>
+> = {
+  mercado: ShoppingCart,
+  restaurante: UtensilsCrossed,
+  saude: Pill,
+  combustivel: Fuel,
+  transporte: Car,
+  moradia: Home,
+  veiculo: Car,
+  lazer: PartyPopper,
+  outro: Receipt,
 };
 
 export default function GastosPage() {
@@ -111,7 +152,8 @@ export default function GastosPage() {
       .select(
         `id, description, amount, date, scope, notes, receipt_url, category_id, paid_by, parent_expense_id, installment_number, installments,
         categories:category_id(id, name),
-        paid_by_user:paid_by(id, name)`,
+        paid_by_user:paid_by(id, name),
+        place:place_id(id, name, type)`,
       )
       .gte("date", startDate)
       .lt("date", endDate)
@@ -147,6 +189,9 @@ export default function GastosPage() {
       paid_by_user: Array.isArray(expense.paid_by_user)
         ? (expense.paid_by_user[0] ?? null)
         : expense.paid_by_user,
+      place: Array.isArray(expense.place)
+        ? (expense.place[0] ?? null)
+        : expense.place,
     }));
 
     setExpenses(normalizedExpenses);
@@ -161,11 +206,11 @@ export default function GastosPage() {
     async function loadInitialData() {
       const { data: categoriesData } = await supabase
         .from("categories")
-        .select("id, name, type, default_scope, place_type")
+        .select("id, name, type, default_scope")
         .order("name");
 
       if (categoriesData) {
-        setCategories(categoriesData);
+        setCategories(categoriesData as Category[]);
       }
 
       const { data: usersData } = await supabase
@@ -418,15 +463,51 @@ export default function GastosPage() {
                         )}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <p className="text-xs text-muted-foreground">
-                          {/* CORREÇÃO: Acessar diretamente .name ao invés de [0].name */}
-                          {expense.categories?.name ?? "Sem categoria"} •{" "}
-                          {new Date(
-                            `${expense.date}T00:00:00`,
-                          ).toLocaleDateString("pt-BR")}
+                        <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
+                          <span>
+                            {expense.categories?.name ?? "Sem categoria"}
+                          </span>
+
+                          {expense.place?.name && (
+                            <>
+                              <span>•</span>
+
+                              {(() => {
+                                const PlaceIcon =
+                                  PLACE_TYPE_ICONS[expense.place.type];
+
+                                return (
+                                  <div className="flex items-center gap-1">
+                                    <PlaceIcon className="w-3 h-3 text-muted-foreground" />
+
+                                    <Badge
+                                      variant="outline"
+                                      className="h-5 text-[10px]"
+                                    >
+                                      {expense.place.name}
+                                    </Badge>
+
+                                    <Badge
+                                      variant="secondary"
+                                      className="h-5 text-[10px]"
+                                    >
+                                      {PLACE_TYPE_LABELS[expense.place.type]}
+                                    </Badge>
+                                  </div>
+                                );
+                              })()}
+                            </>
+                          )}
+
+                          <span>•</span>
+
+                          <span>
+                            {new Date(
+                              `${expense.date}T00:00:00`,
+                            ).toLocaleDateString("pt-BR")}
+                          </span>
                         </p>
 
-                        {/* CORREÇÃO: Acessar diretamente .name ao invés de [0].name */}
                         {expense.paid_by_user?.name && (
                           <p className="text-xs text-muted-foreground">
                             • Pago por {expense.paid_by_user.name}
@@ -436,7 +517,6 @@ export default function GastosPage() {
                     </div>
                   </button>
 
-                  {/* Lado direito */}
                   <div className="flex items-center gap-1 shrink-0 ml-3">
                     <div className="text-right mr-1">
                       <p className="text-sm font-semibold">
@@ -453,7 +533,6 @@ export default function GastosPage() {
                       </Badge>
                     </div>
 
-                    {/* Ver detalhes */}
                     <Button
                       type="button"
                       variant="ghost"
@@ -464,7 +543,6 @@ export default function GastosPage() {
                       <Eye className="w-4 h-4" />
                     </Button>
 
-                    {/* Deletar */}
                     <Button
                       type="button"
                       variant="ghost"
