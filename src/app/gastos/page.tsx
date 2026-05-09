@@ -463,7 +463,7 @@ export default function GastosPage() {
                         )}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
                           <span>
                             {expense.categories?.name ?? "Sem categoria"}
                           </span>
@@ -506,7 +506,7 @@ export default function GastosPage() {
                               `${expense.date}T00:00:00`,
                             ).toLocaleDateString("pt-BR")}
                           </span>
-                        </p>
+                        </div>
 
                         {expense.paid_by_user?.name && (
                           <p className="text-xs text-muted-foreground">

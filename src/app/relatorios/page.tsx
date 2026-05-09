@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { ScopeType } from "@/components/novo-gasto/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +44,7 @@ type Expense = {
   description: string;
   amount: number;
   date: string;
-  scope: string;
+  scope: ScopeType;
   categoryName: string;
   paidByName: string;
 };
@@ -108,6 +109,12 @@ const COLORS = [
   "#6d28d9",
   "#ede9fe",
 ];
+
+const scopeLabel: Record<ScopeType, string> = {
+  joint: "Conjunto",
+  mine: "Você",
+  hers: "Cônjuge",
+};
 
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -187,7 +194,7 @@ function BarChart({ data }: { data: CategoryTotal[] }) {
                 fill="currentColor"
                 opacity={0.6}
               >
-                {d.name.length > 10 ? d.name.slice(0, 9) + "…" : d.name}
+                {d.name.length > 10 ? `${d.name.slice(0, 9)}…` : d.name}
               </text>
               {/* % */}
               <text
@@ -587,21 +594,16 @@ async function generatePDF(
 
     const desc =
       exp.description.length > 32
-        ? exp.description.slice(0, 31) + "…"
+        ? `${exp.description.slice(0, 31)}…`
         : exp.description;
     doc.text(desc, margin + 22, y + 3.5);
 
     const cat =
       exp.categoryName.length > 18
-        ? exp.categoryName.slice(0, 17) + "…"
+        ? `${exp.categoryName.slice(0, 17)}…`
         : exp.categoryName;
     doc.text(cat, margin + 90, y + 3.5);
 
-    const scopeLabel: Record<string, string> = {
-      joint: "Conjunto",
-      mine: "Você",
-      hers: "Cônjuge",
-    };
     doc.text(scopeLabel[exp.scope] ?? exp.scope, margin + 130, y + 3.5);
 
     doc.setFont("helvetica", "bold");
@@ -675,156 +677,163 @@ export default function RelatoriosPage() {
     setLoading(true);
     setData(null);
 
-    const year = Number(selectedYear);
-    const month = Number(selectedMonth);
+    try {
+      const year = Number(selectedYear);
+      const month = Number(selectedMonth);
 
-    // ── Datas do período atual ──
-    const startDate =
-      mode === "monthly"
-        ? `${year}-${String(month).padStart(2, "0")}-01`
-        : `${year}-01-01`;
-    const endDate =
-      mode === "monthly"
-        ? month === 12
-          ? `${year + 1}-01-01`
-          : `${year}-${String(month + 1).padStart(2, "0")}-01`
-        : `${year + 1}-01-01`;
-
-    // ── Datas do período anterior ──
-    const prevStartDate =
-      mode === "monthly"
-        ? month === 1
-          ? `${year - 1}-12-01`
-          : `${year}-${String(month - 1).padStart(2, "0")}-01`
-        : `${year - 1}-01-01`;
-    const prevEndDate = mode === "monthly" ? startDate : `${year}-01-01`;
-
-    // Busca em paralelo
-    const [expensesRes, prevRes, catsRes, usersRes] = await Promise.all([
-      supabase
-        .from("expenses")
-        .select("id, description, amount, date, scope, category_id, paid_by")
-        .gte("date", startDate)
-        .lt("date", endDate)
-        .order("date", { ascending: false }),
-      supabase
-        .from("expenses")
-        .select("amount")
-        .gte("date", prevStartDate)
-        .lt("date", prevEndDate),
-      supabase.from("categories").select("id, name"),
-      supabase.from("users").select("id, name"),
-    ]);
-
-    const expenses = expensesRes.data ?? [];
-    const prevExpenses = prevRes.data ?? [];
-    const cats = Object.fromEntries(
-      (catsRes.data ?? []).map((c) => [c.id, c.name]),
-    );
-    const users = Object.fromEntries(
-      (usersRes.data ?? []).map((u) => [u.id, u.name]),
-    );
-
-    // Enriquece expenses
-    const enriched: Expense[] = expenses.map((e) => ({
-      id: e.id,
-      description: e.description,
-      amount: Number(e.amount),
-      date: e.date,
-      scope: e.scope,
-      categoryName: e.category_id
-        ? (cats[e.category_id] ?? "Sem categoria")
-        : "Sem categoria",
-      paidByName: e.paid_by ? (users[e.paid_by] ?? "—") : "—",
-    }));
-
-    // Totais
-    const totalAll = enriched.reduce((a, e) => a + e.amount, 0);
-    const totalJoint = enriched
-      .filter((e) => e.scope === "joint")
-      .reduce((a, e) => a + e.amount, 0);
-    const totalMine = enriched
-      .filter((e) => e.scope === "mine")
-      .reduce((a, e) => a + e.amount, 0);
-    const totalHers = enriched
-      .filter((e) => e.scope === "hers")
-      .reduce((a, e) => a + e.amount, 0);
-
-    const prevTotal = prevExpenses.reduce((a, e) => a + Number(e.amount), 0);
-    const variation =
-      prevTotal > 0 ? ((totalAll - prevTotal) / prevTotal) * 100 : 0;
-
-    // Por categoria
-    const catTotals: Record<string, { total: number; count: number }> = {};
-    for (const e of enriched) {
-      if (!catTotals[e.categoryName])
-        catTotals[e.categoryName] = { total: 0, count: 0 };
-      catTotals[e.categoryName].total += e.amount;
-      catTotals[e.categoryName].count += 1;
-    }
-    const categoryTotals: CategoryTotal[] = Object.entries(catTotals)
-      .map(([name, v]) => ({
-        name,
-        ...v,
-        pct: totalAll > 0 ? (v.total / totalAll) * 100 : 0,
-      }))
-      .sort((a, b) => b.total - a.total);
-
-    // Pontos mensais (só anual)
-    const monthPoints: MonthPoint[] = [];
-    if (mode === "annual") {
-      for (let m = 1; m <= 12; m++) {
-        const ms = `${year}-${String(m).padStart(2, "0")}-01`;
-        const me =
-          m === 12
+      // ── Datas do período atual ──
+      const startDate =
+        mode === "monthly"
+          ? `${year}-${String(month).padStart(2, "0")}-01`
+          : `${year}-01-01`;
+      const endDate =
+        mode === "monthly"
+          ? month === 12
             ? `${year + 1}-01-01`
-            : `${year}-${String(m + 1).padStart(2, "0")}-01`;
-        const mExpenses = enriched.filter((e) => e.date >= ms && e.date < me);
-        monthPoints.push({
-          label: MONTHS[m - 1].slice(0, 3),
-          total: mExpenses.reduce((a, e) => a + e.amount, 0),
-          joint: mExpenses
-            .filter((e) => e.scope === "joint")
-            .reduce((a, e) => a + e.amount, 0),
-          mine: mExpenses
-            .filter((e) => e.scope === "mine")
-            .reduce((a, e) => a + e.amount, 0),
-          hers: mExpenses
-            .filter((e) => e.scope === "hers")
-            .reduce((a, e) => a + e.amount, 0),
-        });
+            : `${year}-${String(month + 1).padStart(2, "0")}-01`
+          : `${year + 1}-01-01`;
+
+      // ── Datas do período anterior ──
+      const prevStartDate =
+        mode === "monthly"
+          ? month === 1
+            ? `${year - 1}-12-01`
+            : `${year}-${String(month - 1).padStart(2, "0")}-01`
+          : `${year - 1}-01-01`;
+      const prevEndDate = mode === "monthly" ? startDate : `${year}-01-01`;
+
+      // Busca em paralelo
+      const [expensesRes, prevRes, catsRes, usersRes] = await Promise.all([
+        supabase
+          .from("expenses")
+          .select("id, description, amount, date, scope, category_id, paid_by")
+          .gte("date", startDate)
+          .lt("date", endDate)
+          .order("date", { ascending: false }),
+        supabase
+          .from("expenses")
+          .select("amount")
+          .gte("date", prevStartDate)
+          .lt("date", prevEndDate),
+        supabase.from("categories").select("id, name"),
+        supabase.from("users").select("id, name"),
+      ]);
+
+      const expenses = expensesRes.data ?? [];
+      const prevExpenses = prevRes.data ?? [];
+      const cats = Object.fromEntries(
+        (catsRes.data ?? []).map((c) => [c.id, c.name]),
+      );
+      const users = Object.fromEntries(
+        (usersRes.data ?? []).map((u) => [u.id, u.name]),
+      );
+
+      // Enriquece expenses
+      const enriched: Expense[] = expenses.map((e) => ({
+        id: e.id,
+        description: e.description,
+        amount: Number(e.amount),
+        date: e.date,
+        scope: e.scope,
+        categoryName: e.category_id
+          ? (cats[e.category_id] ?? "Sem categoria")
+          : "Sem categoria",
+        paidByName: e.paid_by ? (users[e.paid_by] ?? "—") : "—",
+      }));
+
+      // Totais
+      const totalAll = enriched.reduce((a, e) => a + e.amount, 0);
+      const totalJoint = enriched
+        .filter((e) => e.scope === "joint")
+        .reduce((a, e) => a + e.amount, 0);
+      const totalMine = enriched
+        .filter((e) => e.scope === "mine")
+        .reduce((a, e) => a + e.amount, 0);
+      const totalHers = enriched
+        .filter((e) => e.scope === "hers")
+        .reduce((a, e) => a + e.amount, 0);
+
+      const prevTotal = prevExpenses.reduce((a, e) => a + Number(e.amount), 0);
+      const variation =
+        prevTotal > 0 ? ((totalAll - prevTotal) / prevTotal) * 100 : 0;
+
+      // Por categoria
+      const catTotals: Record<string, { total: number; count: number }> = {};
+      for (const e of enriched) {
+        if (!catTotals[e.categoryName])
+          catTotals[e.categoryName] = { total: 0, count: 0 };
+        catTotals[e.categoryName].total += e.amount;
+        catTotals[e.categoryName].count += 1;
       }
+      const categoryTotals: CategoryTotal[] = Object.entries(catTotals)
+        .map(([name, v]) => ({
+          name,
+          ...v,
+          pct: totalAll > 0 ? (v.total / totalAll) * 100 : 0,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      // Pontos mensais (só anual)
+      const monthPoints: MonthPoint[] = [];
+      if (mode === "annual") {
+        for (let m = 1; m <= 12; m++) {
+          const ms = `${year}-${String(m).padStart(2, "0")}-01`;
+          const me =
+            m === 12
+              ? `${year + 1}-01-01`
+              : `${year}-${String(m + 1).padStart(2, "0")}-01`;
+          const mExpenses = enriched.filter((e) => e.date >= ms && e.date < me);
+          monthPoints.push({
+            label: MONTHS[m - 1].slice(0, 3),
+            total: mExpenses.reduce((a, e) => a + e.amount, 0),
+            joint: mExpenses
+              .filter((e) => e.scope === "joint")
+              .reduce((a, e) => a + e.amount, 0),
+            mine: mExpenses
+              .filter((e) => e.scope === "mine")
+              .reduce((a, e) => a + e.amount, 0),
+            hers: mExpenses
+              .filter((e) => e.scope === "hers")
+              .reduce((a, e) => a + e.amount, 0),
+          });
+        }
+      }
+
+      // Dias no período
+      const msPerDay = 86400000;
+      const days = Math.max(
+        1,
+        (new Date(endDate).getTime() - new Date(startDate).getTime()) /
+          msPerDay,
+      );
+
+      const largestExpense =
+        enriched.length > 0
+          ? enriched.reduce((a, b) => (b.amount > a.amount ? b : a))
+          : null;
+
+      setData({
+        totalAll,
+        totalJoint,
+        totalMine,
+        totalHers,
+        prevTotal,
+        variation,
+        categoryTotals,
+        expenses: enriched,
+        monthPoints,
+        largestExpense,
+        avgPerDay: totalAll / days,
+        jointCount: enriched.filter((e) => e.scope === "joint").length,
+        individualCount: enriched.filter((e) => e.scope !== "joint").length,
+      });
+    } catch (error) {
+      console.error(error);
+
+      toast.error("Erro ao carregar relatório.");
+    } finally {
+      setLoading(false);
     }
-
-    // Dias no período
-    const msPerDay = 86400000;
-    const days = Math.max(
-      1,
-      (new Date(endDate).getTime() - new Date(startDate).getTime()) / msPerDay,
-    );
-
-    const largestExpense =
-      enriched.length > 0
-        ? enriched.reduce((a, b) => (b.amount > a.amount ? b : a))
-        : null;
-
-    setData({
-      totalAll,
-      totalJoint,
-      totalMine,
-      totalHers,
-      prevTotal,
-      variation,
-      categoryTotals,
-      expenses: enriched,
-      monthPoints,
-      largestExpense,
-      avgPerDay: totalAll / days,
-      jointCount: enriched.filter((e) => e.scope === "joint").length,
-      individualCount: enriched.filter((e) => e.scope !== "joint").length,
-    });
-
-    setLoading(false);
   }, [supabase, mode, selectedMonth, selectedYear]);
 
   useEffect(() => {
@@ -833,15 +842,20 @@ export default function RelatoriosPage() {
 
   async function handleExportPDF() {
     if (!data) return;
+
     setExporting(true);
+
     try {
       await generatePDF(data, mode, periodLabel);
+
       toast.success("PDF gerado com sucesso!");
     } catch (e) {
       console.error(e);
+
       toast.error("Erro ao gerar PDF. Tente novamente.");
+    } finally {
+      setExporting(false);
     }
-    setExporting(false);
   }
 
   return (
@@ -1158,26 +1172,32 @@ export default function RelatoriosPage() {
                         <TableCell className="font-medium text-sm max-w-[200px] truncate">
                           {exp.description}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {exp.categoryName}
+                        <TableCell>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {exp.categoryName}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {exp.paidByName}
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">
+                            {exp.scope === "mine"
+                              ? "👤 Você"
+                              : exp.scope === "hers"
+                                ? "👤 Cônjuge"
+                                : `👥 ${exp.paidByName}`}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={`text-xs ${
+                            className={`text-[10px] ${
                               exp.scope === "joint"
                                 ? "text-violet-700 border-violet-300 bg-violet-50 dark:bg-violet-950 dark:border-violet-700"
-                                : "text-blue-700 border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-700"
+                                : exp.scope === "mine"
+                                  ? "text-blue-700 border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-700"
+                                  : "text-pink-700 border-pink-300 bg-pink-50 dark:bg-pink-950 dark:border-pink-700"
                             }`}
                           >
-                            {exp.scope === "joint"
-                              ? "Conjunto"
-                              : exp.scope === "mine"
-                                ? "Você"
-                                : "Cônjuge"}
+                            {scopeLabel[exp.scope]}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right pr-6 font-semibold tabular-nums">

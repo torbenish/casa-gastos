@@ -7,22 +7,27 @@ import {
   ArrowUpRight,
   Calendar,
   ChevronDown,
-  ChevronUp,
   Info,
-  MapPin,
   Minus,
   Package,
   Search,
   ShoppingCart,
+  Store,
   TrendingDown,
   TrendingUp,
   Trophy,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import type { PlaceType } from "@/components/novo-gasto/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -39,11 +44,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Place = { id: string; name: string; type: string };
+type Place = { id: string; name: string; type: PlaceType };
 
 type PriceRecord = {
   date: string;
@@ -56,7 +62,22 @@ type Product = {
   id: string;
   name: string;
   records: PriceRecord[];
+  marketComparison?: {
+    placeName: string;
+    price: number;
+  }[];
+  bestMarket?: {
+    placeName: string;
+    price: number;
+  };
+  potentialSavings?: number;
   currentPrice: number;
+  averagePrice: number;
+  priceVsAverage: number;
+  discountFromPeak: number;
+  inflationSinceFirst: number;
+  recentTrend: number;
+  smartAlert?: string;
   minPrice: number;
   maxPrice: number;
   minDate: string;
@@ -123,7 +144,12 @@ function Sparkline({ records }: { records: PriceRecord[] }) {
 
   const last = prices[prices.length - 1];
   const first = prices[0];
-  const color = last > first ? "#ef4444" : last < first ? "#22c55e" : "#94a3b8";
+  const colorClass =
+    last > first
+      ? "text-red-500"
+      : last < first
+        ? "text-green-500"
+        : "text-slate-400";
 
   const lastPt = points[points.length - 1].split(",");
 
@@ -131,20 +157,20 @@ function Sparkline({ records }: { records: PriceRecord[] }) {
     <svg
       width={W}
       height={H}
-      className="shrink-0"
+      className={`shrink-0 ${colorClass}`}
       aria-hidden="true"
       focusable="false"
     >
       <polyline
         points={points.join(" ")}
         fill="none"
-        stroke={color}
+        stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
         opacity="0.7"
       />
-      <circle cx={lastPt[0]} cy={lastPt[1]} r="2.5" fill={color} />
+      <circle cx={lastPt[0]} cy={lastPt[1]} r="2.5" fill="currentColor" />
     </svg>
   );
 }
@@ -186,7 +212,7 @@ function ProductHistory({ product }: { product: Product }) {
                       variant="outline"
                       className="text-[10px] px-1.5 py-0 h-4 text-green-600 border-green-300 dark:border-green-700"
                     >
-                      mais barato
+                      💚 melhor preço
                     </Badge>
                   )}
                   {isMostExpensive && (
@@ -194,7 +220,7 @@ function ProductHistory({ product }: { product: Product }) {
                       variant="outline"
                       className="text-[10px] px-1.5 py-0 h-4 text-red-500 border-red-300 dark:border-red-700"
                     >
-                      mais caro
+                      🔺 maior preço
                     </Badge>
                   )}
                 </div>
@@ -239,7 +265,6 @@ function ProductHistory({ product }: { product: Product }) {
 // ─── Card de produto ──────────────────────────────────────────────────────────
 
 function ProductCard({ product }: { product: Product }) {
-  const [expanded, setExpanded] = useState(false);
   const hasMultipleRecords = product.records.length > 1;
   const priceChanged = product.minPrice !== product.maxPrice;
 
@@ -247,123 +272,220 @@ function ProductCard({ product }: { product: Product }) {
     product.variation > 0 ? "up" : product.variation < 0 ? "down" : "flat";
 
   return (
-    <div className="border rounded-xl p-4 hover:border-violet-300 dark:hover:border-violet-700 transition-colors bg-card">
-      <div className="flex items-start justify-between gap-3">
-        {/* Esquerda */}
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="bg-violet-100 dark:bg-violet-900 p-2 rounded-lg shrink-0 mt-0.5">
-            <Package className="w-4 h-4 text-violet-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-sm truncate">{product.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Última compra: {formatDate(product.lastSeen)}
-            </p>
-
-            {/* Min/Max — só mostra se houve variação real */}
-            {priceChanged ? (
-              <div className="flex items-center gap-3 mt-2">
-                <div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Mínimo histórico
-                  </p>
-                  <p className="text-xs font-semibold text-green-600 tabular-nums">
-                    {formatBRL(product.minPrice)}
-                    <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                      {formatDateShort(product.minDate)}
-                    </span>
-                  </p>
-                </div>
-                <div className="w-px h-6 bg-border" />
-                <div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Máximo histórico
-                  </p>
-                  <p className="text-xs font-semibold text-red-500 tabular-nums">
-                    {formatBRL(product.maxPrice)}
-                    <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                      {formatDateShort(product.maxDate)}
-                    </span>
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                <Info className="w-3 h-3" />
-                Preço estável em todos os registros
+    <Collapsible>
+      <div className="border rounded-xl p-4 hover:border-violet-300 dark:hover:border-violet-700 transition-colors bg-card">
+        <div className="flex items-start justify-between gap-3">
+          {/* Esquerda */}
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="bg-violet-100 dark:bg-violet-900 p-2 rounded-lg shrink-0 mt-0.5">
+              <Package className="w-4 h-4 text-violet-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm truncate">{product.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Última compra: {formatDate(product.lastSeen)}
               </p>
-            )}
-          </div>
-        </div>
-
-        {/* Direita */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="text-right">
-            <p className="text-lg font-bold tabular-nums">
-              {formatBRL(product.currentPrice)}
-              {product.records[0]?.measurement_type === "weight" && (
-                <span className="text-xs text-muted-foreground font-normal">
-                  /kg
-                </span>
-              )}
-            </p>
-
-            {/* Variação — só mostra se tem histórico E mudou */}
-            {hasMultipleRecords && product.variation !== 0 && (
-              <p
-                className={`text-xs flex items-center justify-end gap-0.5 mt-0.5 ${
-                  trend === "up" ? "text-red-500" : "text-green-600"
-                }`}
-              >
-                {trend === "up" ? (
-                  <TrendingUp className="w-3 h-3" />
-                ) : (
-                  <TrendingDown className="w-3 h-3" />
+              <CollapsibleContent>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Média histórica:{" "}
+                  <span className="font-medium text-foreground/80">
+                    {formatBRL(product.averagePrice)}
+                  </span>
+                </p>
+                {product.records.length > 1 && product.priceVsAverage !== 0 && (
+                  <p
+                    className={`text-xs mt-1 flex items-center gap-1 ${
+                      product.priceVsAverage > 0
+                        ? "text-red-500"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {product.priceVsAverage > 0 ? (
+                      <TrendingUp className="w-3 h-3" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3" />
+                    )}
+                    {Math.abs(product.priceVsAverage).toFixed(1)}%
+                    {product.priceVsAverage > 0
+                      ? " acima da média"
+                      : " abaixo da média"}
+                  </p>
                 )}
-                {Math.abs(product.variation).toFixed(1)}% vs anterior
-              </p>
-            )}
 
-            {hasMultipleRecords && product.variation === 0 && (
-              <p className="text-xs text-muted-foreground flex items-center justify-end gap-0.5 mt-0.5">
-                <Minus className="w-3 h-3" />
-                Sem variação
-              </p>
-            )}
+                {product.records.length > 1 &&
+                  product.discountFromPeak >= 15 && (
+                    <p className="text-xs mt-1 flex items-center gap-1 text-violet-600">
+                      <Trophy className="w-3 h-3" />
+                      {product.discountFromPeak.toFixed(0)}% abaixo do pico
+                      histórico
+                    </p>
+                  )}
 
-            {!hasMultipleRecords && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                1ª compra registrada
-              </p>
-            )}
+                {product.records.length > 2 &&
+                  Math.abs(product.inflationSinceFirst) >= 10 && (
+                    <p
+                      className={`text-xs mt-1 flex items-center gap-1 ${
+                        product.inflationSinceFirst > 0
+                          ? "text-orange-500"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {product.inflationSinceFirst > 0 ? (
+                        <TrendingUp className="w-3 h-3" />
+                      ) : (
+                        <TrendingDown className="w-3 h-3" />
+                      )}
+                      {Math.abs(product.inflationSinceFirst).toFixed(0)}%
+                      {product.inflationSinceFirst > 0
+                        ? " acima da 1ª compra"
+                        : " abaixo da 1ª compra"}
+                    </p>
+                  )}
+
+                {product.records.length >= 2 &&
+                  Math.abs(product.recentTrend) >= 5 && (
+                    <p
+                      className={`text-xs mt-1 flex items-center gap-1 ${
+                        product.recentTrend > 0
+                          ? "text-orange-500"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {product.recentTrend > 0 ? (
+                        <TrendingUp className="w-3 h-3" />
+                      ) : (
+                        <TrendingDown className="w-3 h-3" />
+                      )}
+                      {Math.abs(product.recentTrend).toFixed(0)}%{" "}
+                      {product.recentTrend > 0
+                        ? "de alta nos últimos 30 dias"
+                        : "de queda nos últimos 30 dias"}
+                    </p>
+                  )}
+
+                {product.smartAlert && (
+                  <div className="mt-2">
+                    <Badge variant="destructive" className="text-[10px]">
+                      {product.smartAlert}
+                    </Badge>
+                  </div>
+                )}
+
+                {product.bestMarket && (
+                  <div className="pt-1">
+                    <Badge variant="secondary" className="text-[10px] gap-1">
+                      🏆 Melhor preço: {product.bestMarket.placeName} (
+                      {formatBRL(product.bestMarket.price)})
+                    </Badge>
+                  </div>
+                )}
+
+                {product.potentialSavings !== undefined &&
+                  product.potentialSavings > 0 && (
+                    <p className="text-xs mt-1 flex items-center gap-1 text-emerald-600">
+                      <ShoppingCart className="w-3 h-3" />
+                      Você economizaria {formatBRL(product.potentialSavings)}{" "}
+                      comprando no {product.bestMarket?.placeName}
+                    </p>
+                  )}
+
+                {/* Min/Max — só mostra se houve variação real */}
+                {priceChanged ? (
+                  <div className="flex items-center gap-3 mt-2">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Mínimo histórico
+                      </p>
+                      <p className="text-xs font-semibold text-green-600 tabular-nums">
+                        {formatBRL(product.minPrice)}
+                        <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                          {formatDateShort(product.minDate)}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="w-px h-6 bg-border" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Máximo histórico
+                      </p>
+                      <p className="text-xs font-semibold text-red-500 tabular-nums">
+                        {formatBRL(product.maxPrice)}
+                        <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                          {formatDateShort(product.maxDate)}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <Info className="w-3 h-3" />
+                    Preço estável em todos os registros
+                  </p>
+                )}
+                <ProductHistory product={product} />
+              </CollapsibleContent>
+            </div>
           </div>
 
-          <Sparkline records={product.records} />
+          {/* Direita */}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="text-right">
+              <p className="text-lg font-bold tabular-nums">
+                {formatBRL(product.currentPrice)}
+                {product.records[0]?.measurement_type === "weight" && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    /kg
+                  </span>
+                )}
+              </p>
 
-          {hasMultipleRecords && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-            >
-              {expanded ? (
-                <>
-                  <ChevronUp className="w-3 h-3" />
-                  Ocultar
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="w-3 h-3" />
-                  Ver {product.records.length} registros
-                </>
+              {/* Variação — só mostra se tem histórico E mudou */}
+              {hasMultipleRecords && product.variation !== 0 && (
+                <p
+                  className={`text-xs flex items-center justify-end gap-0.5 mt-0.5 ${
+                    trend === "up" ? "text-red-500" : "text-green-600"
+                  }`}
+                >
+                  {trend === "up" ? (
+                    <TrendingUp className="w-3 h-3" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3" />
+                  )}
+                  {Math.abs(product.variation).toFixed(1)}% vs anterior
+                </p>
               )}
-            </button>
-          )}
+
+              {hasMultipleRecords && product.variation === 0 && (
+                <p className="text-xs text-muted-foreground flex items-center justify-end gap-0.5 mt-0.5">
+                  <Minus className="w-3 h-3" />
+                  Sem variação
+                </p>
+              )}
+
+              {!hasMultipleRecords && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  1ª compra registrada
+                </p>
+              )}
+            </div>
+
+            <Sparkline records={product.records} />
+
+            <CollapsibleTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+              >
+                <ChevronDown className="w-3 h-3 mr-1" />
+                Ver detalhes
+              </Button>
+            </CollapsibleTrigger>
+          </div>
         </div>
       </div>
-
-      {expanded && <ProductHistory product={product} />}
-    </div>
+    </Collapsible>
   );
 }
 
@@ -393,137 +515,284 @@ export default function MercadoDetalhesPage() {
     async function load() {
       setLoading(true);
 
-      const { data: placeData } = await supabase
-        .from("places")
-        .select("id, name, type")
-        .eq("id", placeId)
-        .single();
+      try {
+        const { data: placeData, error: placeError } = await supabase
+          .from("places")
+          .select("id, name, type")
+          .eq("id", placeId)
+          .single();
 
-      if (!placeData) {
-        setLoading(false);
-        return;
-      }
-      setPlace(placeData);
-
-      const { data: expensesData } = await supabase
-        .from("expenses")
-        .select("id, amount, date")
-        .eq("place_id", placeId)
-        .order("date", { ascending: false });
-
-      const expenses = expensesData ?? [];
-      const totalSpent = expenses.reduce((acc, e) => acc + Number(e.amount), 0);
-      setStats({
-        totalVisits: expenses.length,
-        lastVisit: expenses[0]?.date ?? null,
-        totalSpent,
-        avgSpentPerVisit:
-          expenses.length > 0 ? totalSpent / expenses.length : 0,
-      });
-
-      if (expenses.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      const expenseIds = expenses.map((e) => e.id);
-
-      const { data: itemsData } = await supabase
-        .from("expense_items")
-        .select(
-          "id, product_id, quantity, unit_price, total_price, weight, price_per_kg, measurement_type, expense_id, products(id, name)",
-        )
-        .in("expense_id", expenseIds);
-
-      const items = itemsData ?? [];
-      const productMap = new Map<
-        string,
-        { id: string; name: string; records: PriceRecord[] }
-      >();
-
-      for (const item of items) {
-        const productsRaw = (item as Record<string, unknown>).products;
-        let productName = "Produto desconhecido";
-        let productId = item.product_id as string | null;
-
-        if (Array.isArray(productsRaw) && productsRaw[0]) {
-          productName = (productsRaw[0] as { name: string }).name;
-          productId = (productsRaw[0] as { id: string }).id ?? productId;
-        } else if (productsRaw && typeof productsRaw === "object") {
-          productName = (productsRaw as { name: string }).name;
-          productId = (productsRaw as { id: string }).id ?? productId;
+        if (placeError) {
+          throw placeError;
         }
 
-        if (!productId) continue;
+        if (!placeData) {
+          return;
+        }
+        setPlace(placeData);
 
-        const expense = expenses.find((e) => e.id === item.expense_id);
-        if (!expense) continue;
+        const { data: expensesData, error: expensesError } = await supabase
+          .from("expenses")
+          .select("id, amount, date")
+          .eq("place_id", placeId)
+          .order("date", { ascending: false });
 
-        const isByWeight = item.measurement_type === "weight";
-        const price = isByWeight
-          ? Number(item.price_per_kg ?? 0)
-          : Number(item.unit_price ?? 0);
+        if (expensesError) {
+          throw expensesError;
+        }
 
-        if (price <= 0) continue;
+        const expenses = expensesData ?? [];
+        const totalSpent = expenses.reduce(
+          (acc, e) => acc + Number(e.amount),
+          0,
+        );
+        setStats({
+          totalVisits: expenses.length,
+          lastVisit: expenses[0]?.date ?? null,
+          totalSpent,
+          avgSpentPerVisit:
+            expenses.length > 0 ? totalSpent / expenses.length : 0,
+        });
 
-        const record: PriceRecord = {
-          date: expense.date,
-          price,
-          expense_id: expense.id,
-          measurement_type:
-            (item.measurement_type as "unit" | "weight") ?? "unit",
-        };
+        if (expenses.length === 0) {
+          setLoading(false);
+          return;
+        }
 
-        const existing = productMap.get(productId);
-        if (existing) {
-          existing.records.push(record);
-        } else {
-          productMap.set(productId, {
-            id: productId,
-            name: productName,
-            records: [record],
+        const expenseIds = expenses.map((e) => e.id);
+
+        const { data: itemsData, error: itemsError } = await supabase
+          .from("expense_items")
+          .select(
+            "id, product_id, quantity, unit_price, total_price, weight, price_per_kg, measurement_type, expense_id, products(id, name)",
+          )
+          .in("expense_id", expenseIds);
+
+        const items = itemsData ?? [];
+
+        if (itemsError) {
+          throw itemsError;
+        }
+
+        const expensesMap = new Map(expenses.map((e) => [e.id, e]));
+
+        const productMap = new Map<
+          string,
+          { id: string; name: string; records: PriceRecord[] }
+        >();
+
+        for (const item of items) {
+          const productsRaw = (item as Record<string, unknown>).products;
+          let productName = "Produto desconhecido";
+          let productId = item.product_id as string | null;
+
+          if (Array.isArray(productsRaw) && productsRaw[0]) {
+            productName = (productsRaw[0] as { name: string }).name;
+            productId = (productsRaw[0] as { id: string }).id ?? productId;
+          } else if (productsRaw && typeof productsRaw === "object") {
+            productName = (productsRaw as { name: string }).name;
+            productId = (productsRaw as { id: string }).id ?? productId;
+          }
+
+          if (!productId) continue;
+
+          const expense = expensesMap.get(item.expense_id);
+          if (!expense) continue;
+
+          const isByWeight = item.measurement_type === "weight";
+          const price = isByWeight
+            ? Number(item.price_per_kg ?? 0)
+            : Number(item.unit_price ?? 0);
+
+          if (price <= 0) continue;
+
+          const record: PriceRecord = {
+            date: expense.date,
+            price,
+            expense_id: expense.id,
+            measurement_type:
+              (item.measurement_type as "unit" | "weight") ?? "unit",
+          };
+
+          const existing = productMap.get(productId);
+          if (existing) {
+            existing.records.push(record);
+          } else {
+            productMap.set(productId, {
+              id: productId,
+              name: productName,
+              records: [record],
+            });
+          }
+        }
+
+        const processedProducts: Product[] = [];
+
+        for (const [, p] of productMap) {
+          const sorted = [...p.records].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+          );
+
+          const prices = sorted.map((r) => r.price);
+          const currentPrice = sorted[sorted.length - 1].price;
+          const minPrice = Math.min(...prices);
+          const maxPrice = Math.max(...prices);
+
+          const averagePrice =
+            prices.reduce((acc, p) => acc + p, 0) / prices.length;
+
+          const priceVsAverage =
+            averagePrice > 0
+              ? ((currentPrice - averagePrice) / averagePrice) * 100
+              : 0;
+
+          const discountFromPeak =
+            maxPrice > 0 ? ((maxPrice - currentPrice) / maxPrice) * 100 : 0;
+          const firstPrice = sorted[0].price;
+
+          const now = new Date();
+
+          const last30Days = sorted.filter((record) => {
+            const diff = now.getTime() - new Date(record.date).getTime();
+
+            return diff <= 1000 * 60 * 60 * 24 * 30;
+          });
+
+          let recentTrend = 0;
+
+          let smartAlert: string | undefined;
+
+          if (last30Days.length >= 2) {
+            const first = last30Days[0].price;
+            const last = last30Days[last30Days.length - 1].price;
+
+            recentTrend = first > 0 ? ((last - first) / first) * 100 : 0;
+
+            const firstDate = new Date(last30Days[0].date);
+            const lastDate = new Date(last30Days[last30Days.length - 1].date);
+
+            const daysDiff = Math.max(
+              1,
+              Math.ceil(
+                (lastDate.getTime() - firstDate.getTime()) /
+                  (1000 * 60 * 60 * 24),
+              ),
+            );
+
+            if (recentTrend >= 20 && daysDiff <= 15) {
+              smartAlert = `⚠️ Forte aumento: ${recentTrend.toFixed(
+                0,
+              )}% em ${daysDiff} dias`;
+            }
+          }
+
+          const inflationSinceFirst =
+            firstPrice > 0
+              ? ((currentPrice - firstPrice) / firstPrice) * 100
+              : 0;
+          const minRecord = sorted.find((r) => r.price === minPrice);
+          const maxRecord = sorted.find((r) => r.price === maxPrice);
+
+          if (!minRecord || !maxRecord) {
+            continue;
+          }
+          const prevPrice =
+            sorted.length > 1 ? sorted[sorted.length - 2].price : currentPrice;
+          const variation =
+            prevPrice > 0 ? ((currentPrice - prevPrice) / prevPrice) * 100 : 0;
+
+          const { data: comparisonData } = await supabase
+            .from("expense_items")
+            .select(`
+              unit_price,
+              price_per_kg,
+              measurement_type,
+              expenses!inner (
+                place_id,
+                places:place_id (
+                  name
+                )
+              )
+            `)
+            .eq("product_id", p.id);
+
+          console.log("comparison item", comparisonData?.[0]);
+
+          const groupedMarkets = new Map<string, number>();
+
+          comparisonData?.forEach((item) => {
+            const expensesData = item.expenses as {
+              places?: {
+                name?: string;
+              };
+            };
+
+            const placeName = expensesData.places?.name ?? "Desconhecido";
+
+            const price =
+              item.measurement_type === "weight"
+                ? Number(item.price_per_kg ?? 0)
+                : Number(item.unit_price ?? 0);
+
+            if (price <= 0) return;
+
+            const existing = groupedMarkets.get(placeName);
+
+            if (existing === undefined || price < existing) {
+              groupedMarkets.set(placeName, price);
+            }
+          });
+
+          const marketComparison = Array.from(groupedMarkets.entries()).map(
+            ([placeName, price]) => ({
+              placeName,
+              price,
+            }),
+          );
+
+          const bestMarket =
+            marketComparison.length > 0
+              ? marketComparison.reduce((best, current) =>
+                  current.price < best.price ? current : best,
+                )
+              : null;
+
+          console.log("bestMarket", p.name, bestMarket);
+
+          const potentialSavings =
+            bestMarket && bestMarket.price < currentPrice
+              ? currentPrice - bestMarket.price
+              : 0;
+
+          processedProducts.push({
+            id: p.id,
+            name: p.name,
+            records: sorted,
+            currentPrice,
+            averagePrice,
+            priceVsAverage,
+            discountFromPeak,
+            inflationSinceFirst,
+            recentTrend,
+            smartAlert,
+            minPrice,
+            maxPrice,
+            minDate: minRecord.date,
+            maxDate: maxRecord.date,
+            variation,
+            lastSeen: sorted[sorted.length - 1].date,
+            marketComparison,
+            bestMarket: bestMarket ?? undefined,
+            potentialSavings,
           });
         }
+
+        setProducts(processedProducts);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
-
-      const processedProducts: Product[] = [];
-
-      for (const [, p] of productMap) {
-        const sorted = [...p.records].sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-        );
-
-        const prices = sorted.map((r) => r.price);
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-        const minRecord = sorted.find((r) => r.price === minPrice);
-        const maxRecord = sorted.find((r) => r.price === maxPrice);
-
-        if (!minRecord || !maxRecord) {
-          continue;
-        }
-        const currentPrice = sorted[sorted.length - 1].price;
-        const prevPrice =
-          sorted.length > 1 ? sorted[sorted.length - 2].price : currentPrice;
-        const variation =
-          prevPrice > 0 ? ((currentPrice - prevPrice) / prevPrice) * 100 : 0;
-
-        processedProducts.push({
-          id: p.id,
-          name: p.name,
-          records: sorted,
-          currentPrice,
-          minPrice,
-          maxPrice,
-          minDate: minRecord.date,
-          maxDate: maxRecord.date,
-          variation,
-          lastSeen: sorted[sorted.length - 1].date,
-        });
-      }
-
-      setProducts(processedProducts);
-      setLoading(false);
     }
 
     load();
@@ -613,7 +882,7 @@ export default function MercadoDetalhesPage() {
 
         <div className="flex items-start gap-3">
           <div className="bg-violet-100 dark:bg-violet-900 p-3 rounded-xl">
-            <MapPin className="w-5 h-5 text-violet-600" />
+            <Store className="w-5 h-5 text-violet-600" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold">{place.name}</h1>
@@ -685,11 +954,11 @@ export default function MercadoDetalhesPage() {
                 </div>
                 <p className="font-semibold text-sm">{biggestIncrease.name}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatBRL(biggestIncrease.currentPrice)}{" "}
+                  Subiu{" "}
                   <span className="text-red-500 font-semibold">
-                    +{biggestIncrease.variation.toFixed(1)}%
+                    {biggestIncrease.variation.toFixed(1)}%
                   </span>{" "}
-                  vs compra anterior
+                  desde a última compra
                 </p>
               </div>
             )}
@@ -796,37 +1065,23 @@ export default function MercadoDetalhesPage() {
               </SelectContent>
             </Select>
 
-            <div className="flex border rounded-md overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setViewMode("cards")}
-                className={`px-3 py-2 text-xs transition-colors ${
-                  viewMode === "cards"
-                    ? "bg-violet-600 text-white"
-                    : "hover:bg-muted text-muted-foreground"
-                }`}
-              >
-                Cards
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("table")}
-                className={`px-3 py-2 text-xs transition-colors ${
-                  viewMode === "table"
-                    ? "bg-violet-600 text-white"
-                    : "hover:bg-muted text-muted-foreground"
-                }`}
-              >
-                Tabela
-              </button>
-            </div>
+            <Tabs
+              value={viewMode}
+              onValueChange={(value) => setViewMode(value as "cards" | "table")}
+            >
+              <TabsList className="grid w-[200px] grid-cols-2">
+                <TabsTrigger value="cards">Cards</TabsTrigger>
+
+                <TabsTrigger value="table">Tabela</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           <p className="text-xs text-muted-foreground">
             {filteredProducts.length} produto
             {filteredProducts.length !== 1 ? "s" : ""}
             {search
-              ? " encontrado" + (filteredProducts.length !== 1 ? "s" : "")
+              ? ` encontrado${filteredProducts.length !== 1 ? "s" : ""}`
               : " rastreados"}
             {productsWithHistory.length > 0 &&
               ` · ${productsWithHistory.length} com histórico de variação`}

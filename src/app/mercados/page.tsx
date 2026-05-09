@@ -3,7 +3,6 @@
 import {
   AlertCircle,
   ChevronRight,
-  MapPin,
   Package,
   Search,
   ShoppingCart,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { PlaceType } from "@/components/novo-gasto/types";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase";
@@ -19,7 +19,7 @@ import { createClient } from "@/lib/supabase";
 type PlaceSummary = {
   id: string;
   name: string;
-  type: string;
+  type: PlaceType;
   totalVisits: number;
   totalSpent: number;
   lastVisit: string | null;
@@ -62,75 +62,97 @@ export default function MercadosPage() {
     async function load() {
       setLoading(true);
 
-      const { data: placesData } = await supabase
-        .from("places")
-        .select("id, name, type")
-        .eq("type", "mercado")
-        .order("name");
+      try {
+        const { data: placesData, error: placesError } = await supabase
+          .from("places")
+          .select("id, name, type")
+          .eq("type", "mercado")
+          .order("name");
 
-      if (!placesData || placesData.length === 0) {
-        setLoading(false);
-        return;
-      }
+        if (placesError) {
+          throw placesError;
+        }
 
-      const summaries = await Promise.all(
-        placesData.map(async (place) => {
-          const { data: expenses } = await supabase
-            .from("expenses")
-            .select("id, amount, date")
-            .eq("place_id", place.id)
-            .order("date", { ascending: false });
+        if (!placesData || placesData.length === 0) {
+          setPlaces([]);
+          return;
+        }
 
-          const expList = expenses ?? [];
-          const totalSpent = expList.reduce(
-            (acc, e) => acc + Number(e.amount),
-            0,
-          );
-          const expenseIds = expList.map((e) => e.id);
+        const summaries = await Promise.all(
+          placesData.map(async (place) => {
+            const { data: expenses, error: expensesError } = await supabase
+              .from("expenses")
+              .select("id, amount, date")
+              .eq("place_id", place.id)
+              .order("date", { ascending: false });
 
-          let productCount = 0;
-          let hasDetailedItems = false;
+            if (expensesError) {
+              throw expensesError;
+            }
 
-          if (expenseIds.length > 0) {
-            const { data: items } = await supabase
-              .from("expense_items")
-              .select("product_id")
-              .in("expense_id", expenseIds)
-              .not("product_id", "is", null);
+            const expList = expenses ?? [];
 
-            const uniqueProducts = new Set(
-              (items ?? []).map((i) => i.product_id),
+            const totalSpent = expList.reduce(
+              (acc, e) => acc + Number(e.amount),
+              0,
             );
-            productCount = uniqueProducts.size;
-            hasDetailedItems = (items ?? []).length > 0;
+
+            const expenseIds = expList.map((e) => e.id);
+
+            let productCount = 0;
+            let hasDetailedItems = false;
+
+            if (expenseIds.length > 0) {
+              const { data: items, error: itemsError } = await supabase
+                .from("expense_items")
+                .select("product_id")
+                .in("expense_id", expenseIds)
+                .not("product_id", "is", null);
+
+              if (itemsError) {
+                throw itemsError;
+              }
+
+              const uniqueProducts = new Set(
+                (items ?? []).map((i) => i.product_id),
+              );
+
+              productCount = uniqueProducts.size;
+              hasDetailedItems = (items ?? []).length > 0;
+            }
+
+            return {
+              id: place.id,
+              name: place.name,
+              type: place.type,
+              totalVisits: expList.length,
+              totalSpent,
+              lastVisit: expList[0]?.date ?? null,
+              productCount,
+              hasDetailedItems,
+            };
+          }),
+        );
+
+        summaries.sort((a, b) => {
+          if (a.hasDetailedItems !== b.hasDetailedItems) {
+            return a.hasDetailedItems ? -1 : 1;
           }
 
-          return {
-            id: place.id,
-            name: place.name,
-            type: place.type,
-            totalVisits: expList.length,
-            totalSpent,
-            lastVisit: expList[0]?.date ?? null,
-            productCount,
-            hasDetailedItems,
-          };
-        }),
-      );
+          if (!a.lastVisit) return 1;
+          if (!b.lastVisit) return -1;
 
-      // Ordena: com itens detalhados primeiro, depois por data de visita
-      summaries.sort((a, b) => {
-        if (a.hasDetailedItems !== b.hasDetailedItems)
-          return a.hasDetailedItems ? -1 : 1;
-        if (!a.lastVisit) return 1;
-        if (!b.lastVisit) return -1;
-        return (
-          new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime()
-        );
-      });
+          return (
+            new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime()
+          );
+        });
 
-      setPlaces(summaries);
-      setLoading(false);
+        setPlaces(summaries);
+      } catch (error) {
+        console.error("Erro ao carregar mercados:", error);
+      } finally {
+        setLoading(false);
+      }
     }
 
     load();
@@ -143,6 +165,9 @@ export default function MercadosPage() {
   const totalMercados = places.length;
   const totalGasto = places.reduce((acc, p) => acc + p.totalSpent, 0);
   const totalProdutos = places.reduce((acc, p) => acc + p.productCount, 0);
+  const totalVisits = places.reduce((acc, p) => acc + p.totalVisits, 0);
+
+  const averageTicket = totalVisits > 0 ? totalGasto / totalVisits : 0;
 
   return (
     <div className="space-y-6">
@@ -158,7 +183,7 @@ export default function MercadosPage() {
 
       {/* Resumo geral */}
       {!loading && places.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             {
               label: "Locais cadastrados",
@@ -171,9 +196,14 @@ export default function MercadosPage() {
               icon: <Package className="w-3.5 h-3.5" />,
             },
             {
-              label: "Total gasto",
+              label: "Gasto acumulado",
               value: formatBRL(totalGasto),
               icon: <TrendingDown className="w-3.5 h-3.5" />,
+            },
+            {
+              label: "Ticket médio",
+              value: formatBRL(averageTicket),
+              icon: <ShoppingCart className="w-3.5 h-3.5" />,
             },
           ].map((s) => (
             <div
@@ -227,11 +257,20 @@ export default function MercadosPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="bg-violet-100 dark:bg-violet-900 p-2.5 rounded-xl group-hover:bg-violet-200 dark:group-hover:bg-violet-800 transition-colors shrink-0">
-                      <MapPin className="w-4 h-4 text-violet-600" />
+                      <Store className="w-4 h-4 text-violet-600" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-sm">{place.name}</p>
+
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {place.productCount}{" "}
+                          {place.productCount === 1 ? "produto" : "produtos"}
+                        </Badge>
+
                         {!place.hasDetailedItems && place.totalVisits > 0 && (
                           <Badge
                             variant="outline"
@@ -269,7 +308,7 @@ export default function MercadosPage() {
                   <div>
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <TrendingDown className="w-3 h-3" />
-                      Total gasto
+                      Gasto acumulado
                     </p>
                     <p className="text-sm font-bold mt-0.5">
                       {formatBRL(place.totalSpent)}
