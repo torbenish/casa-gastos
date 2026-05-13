@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase";
-import { PLACE_TYPES, type Place } from "../types";
+import { PLACE_TYPE_CONFIG, type Place, type PlaceType } from "../types";
 
 type Props = {
   placeSearch: string;
@@ -37,7 +37,7 @@ export function CampoLocal({
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newPlaceName, setNewPlaceName] = useState("");
-  const [newPlaceType, setNewPlaceType] = useState("outro");
+  const [newPlaceType, setNewPlaceType] = useState<PlaceType>("outros");
   const [savingPlace, setSavingPlace] = useState(false);
 
   function normalizeText(text: string) {
@@ -93,14 +93,20 @@ export function CampoLocal({
     const { data, error } = await supabase
       .from("places")
       .insert({ name: newPlaceName.trim(), type: newPlaceType })
-      .select("id, name, type")
+      .select(`
+        id,
+        name,
+        type,
+        created_at,
+        is_favorite
+      `)
       .single();
 
     if (!error && data) {
       setAllPlaces(
         [...allPlaces, data].sort((a, b) => a.name.localeCompare(b.name)),
       );
-      handleSelectPlace(data);
+      handleSelectPlace(data as Place);
       setNewPlaceName("");
       setShowNewForm(false);
       toast.success("Local cadastrado!");
@@ -167,7 +173,7 @@ export function CampoLocal({
                     <div className="flex flex-col">
                       <span>{place.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {PLACE_TYPES[place.type] ?? place.type}
+                        {PLACE_TYPE_CONFIG[place.type]?.label ?? place.type}
                       </span>
                     </div>
 
@@ -205,14 +211,17 @@ export function CampoLocal({
             onChange={(e) => setNewPlaceName(e.target.value)}
             placeholder="Nome do local"
           />
-          <Select value={newPlaceType} onValueChange={setNewPlaceType}>
+          <Select
+            value={newPlaceType}
+            onValueChange={(value) => setNewPlaceType(value as PlaceType)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(PLACE_TYPES).map(([value, label]) => (
+              {Object.entries(PLACE_TYPE_CONFIG).map(([value, config]) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {config.label}
                 </SelectItem>
               ))}
             </SelectContent>

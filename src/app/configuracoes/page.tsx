@@ -1,23 +1,14 @@
 "use client";
 
 import {
-  Bus,
-  Car,
-  Fuel,
-  Gamepad2,
-  HeartPulse,
-  Home,
   MapPin,
-  MoreHorizontal,
   Pencil,
   Plus,
   Search,
   Settings,
-  ShoppingCart,
   Star,
   Store,
   Trash2,
-  Utensils,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -50,99 +41,17 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase";
+import {
+  PLACE_TYPE_CONFIG,
+  PLACE_TYPE_GROUPS,
+  PlaceWithExpenses,
+  type Place,
+  type PlaceType,
+} from "@/components/novo-gasto/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type PlaceType =
-  | "mercado"
-  | "restaurante"
-  | "saude"
-  | "combustivel"
-  | "transporte"
-  | "moradia"
-  | "veiculo"
-  | "lazer"
-  | "outro";
-
-type Place = {
-  id: string;
-  name: string;
-  type: PlaceType;
-  created_at: string;
-  usageCount?: number;
-  lastUsedAt?: string | null;
-  is_favorite?: boolean;
-};
-
 type Tab = "locais";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const PLACE_TYPES = [
-  {
-    value: "mercado",
-    label: "Mercado",
-    icon: ShoppingCart,
-    color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  },
-  {
-    value: "restaurante",
-    label: "Restaurante",
-    icon: Utensils,
-    color: "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300",
-  },
-  {
-    value: "saude",
-    label: "Saúde",
-    icon: HeartPulse,
-    color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
-  },
-  {
-    value: "combustivel",
-    label: "Combustível",
-    icon: Fuel,
-    color:
-      "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  },
-  {
-    value: "transporte",
-    label: "Transporte",
-    icon: Bus,
-    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
-  },
-  {
-    value: "moradia",
-    label: "Moradia",
-    icon: Home,
-    color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-  },
-  {
-    value: "veiculo",
-    label: "Veículo",
-    icon: Car,
-    color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  },
-  {
-    value: "lazer",
-    label: "Lazer",
-    icon: Gamepad2,
-    color:
-      "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  },
-  {
-    value: "outro",
-    label: "Outro",
-    icon: MoreHorizontal,
-    color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  },
-];
-
-function getTypeInfo(type: string) {
-  return (
-    PLACE_TYPES.find((t) => t.value === type) ??
-    PLACE_TYPES[PLACE_TYPES.length - 1]
-  );
-}
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -158,6 +67,10 @@ function normalizeText(text: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
+}
+
+function getPlaceTypeInfo(type: PlaceType) {
+  return PLACE_TYPE_CONFIG[type] ?? PLACE_TYPE_CONFIG.outros;
 }
 
 // ─── Modal de criar/editar local ─────────────────────────────────────────────
@@ -178,16 +91,29 @@ function PlaceModal({
   onSaved,
 }: PlaceModalProps) {
   const [name, setName] = useState("");
-  const [type, setType] = useState<PlaceType>("outro");
+  const [type, setType] = useState<PlaceType | "">("");
+  const [group, setGroup] = useState("");
   const [saving, setSaving] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
     if (open) {
       setName(place?.name ?? "");
-      setType((place?.type as PlaceType) ?? "outro");
+
+      const currentType = (place?.type as PlaceType) ?? "outros";
+
+      setType(currentType);
+
+      const foundGroup = PLACE_TYPE_GROUPS.find((group) =>
+        group.items.includes(currentType),
+      );
+
+      setGroup(foundGroup?.label ?? "");
     }
   }, [open, place]);
+
+  const availableTypes =
+    PLACE_TYPE_GROUPS.find((g) => g.label === group)?.items ?? [];
 
   async function handleSave() {
     if (!name.trim()) {
@@ -265,22 +191,52 @@ function PlaceModal({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Categoria *</Label>
+            <div className="space-y-1.5">
+              <Label>Grupo do local *</Label>
+
+              <Select
+                value={group}
+                onValueChange={(value) => {
+                  setGroup(value);
+                  setType("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um grupo" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {PLACE_TYPE_GROUPS.map((group) => (
+                    <SelectItem key={group.label} value={group.label}>
+                      {group.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Label>Tipo do local *</Label>
             <Select
-              value={type}
+              value={type || undefined}
               onValueChange={(value) => setType(value as PlaceType)}
+              disabled={!group}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue
+                  placeholder={
+                    group ? "Selecione o tipo" : "Escolha primeiro um grupo"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                {PLACE_TYPES.map((t) => {
-                  const Icon = t.icon;
+                {availableTypes.map((item) => {
+                  const config = PLACE_TYPE_CONFIG[item];
+                  const Icon = config.icon;
+
                   return (
-                    <SelectItem key={t.value} value={t.value}>
+                    <SelectItem key={item} value={item}>
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4" />
-                        {t.label}
+                        {config.label}
                       </div>
                     </SelectItem>
                   );
@@ -288,16 +244,18 @@ function PlaceModal({
               </SelectContent>
             </Select>
 
-            {/* Preview do badge */}
-            <div className="flex items-center gap-2 pt-1">
-              <p className="text-xs text-muted-foreground">Aparecerá como:</p>
-              <Badge
-                variant="outline"
-                className={`text-xs ${getTypeInfo(type).color}`}
-              >
-                {getTypeInfo(type).label}
-              </Badge>
-            </div>
+            {type && (
+              <div className="flex items-center gap-2 pt-1">
+                <p className="text-xs text-muted-foreground">Aparecerá como:</p>
+
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${getPlaceTypeInfo(type).color}`}
+                >
+                  {getPlaceTypeInfo(type).label}
+                </Badge>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-1">
@@ -326,18 +284,6 @@ function PlaceModal({
 }
 
 // ─── Seção de Locais ──────────────────────────────────────────────────────────
-
-type PlaceWithExpenses = {
-  id: string;
-  name: string;
-  type: PlaceType;
-  created_at: string;
-  is_favorite: boolean;
-  expenses: {
-    id: string;
-    created_at: string;
-  }[];
-};
 
 function LocalesSection() {
   const [places, setPlaces] = useState<Place[]>([]);
@@ -463,11 +409,11 @@ function LocalesSection() {
     return 0;
   });
 
-  // Agrupa por tipo para exibição
-  const grouped = PLACE_TYPES.map((t) => ({
-    ...t,
-    places: sorted.filter((p) => p.type === t.value),
-  })).filter((g) => g.places.length > 0);
+  const grouped = PLACE_TYPE_GROUPS.map((group) => ({
+    ...group,
+
+    places: sorted.filter((p) => group.items.includes(p.type)),
+  })).filter((group) => group.places.length > 0);
 
   return (
     <>
@@ -492,10 +438,23 @@ function LocalesSection() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
-            {PLACE_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
+            <div className="my-1 border-t" />
+            {PLACE_TYPE_GROUPS.map((group) => (
+              <div key={group.label} className="py-1">
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  {group.label}
+                </div>
+
+                {group.items.map((item) => {
+                  const config = PLACE_TYPE_CONFIG[item];
+
+                  return (
+                    <SelectItem key={item} value={item}>
+                      {config.label}
+                    </SelectItem>
+                  );
+                })}
+              </div>
             ))}
           </SelectContent>
         </Select>
@@ -529,7 +488,8 @@ function LocalesSection() {
         <p className="text-xs text-muted-foreground mb-4">
           {filtered.length} local{filtered.length !== 1 ? "is" : ""} encontrado
           {filtered.length !== 1 ? "s" : ""}
-          {filterType !== "all" && ` em ${getTypeInfo(filterType).label}`}
+          {filterType !== "all" &&
+            ` em ${getPlaceTypeInfo(filterType as PlaceType).label}`}
         </p>
       )}
 
@@ -555,12 +515,16 @@ function LocalesSection() {
       ) : (
         <div className="space-y-6">
           {grouped.map((group) => {
-            const Icon = group.icon;
+            const firstType = group.items[0] as PlaceType;
+
+            const groupConfig = PLACE_TYPE_CONFIG[firstType];
+
+            const Icon = groupConfig.icon;
             return (
-              <div key={group.value}>
+              <div key={group.label}>
                 {/* Header do grupo */}
                 <div className="flex items-center gap-2 mb-2">
-                  <div className={`p-1.5 rounded-lg ${group.color}`}>
+                  <div className={`p-1.5 rounded-lg ${groupConfig.color}`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <p className="text-sm font-semibold">{group.label}</p>
@@ -578,7 +542,7 @@ function LocalesSection() {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div
-                          className={`p-1.5 rounded-lg ${group.color} shrink-0`}
+                          className={`p-1.5 rounded-lg ${groupConfig.color} shrink-0`}
                         >
                           <Icon className="w-3.5 h-3.5" />
                         </div>

@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase";
+import { PLACE_TYPE_CONFIG, PlaceType } from "./novo-gasto/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,9 +51,13 @@ type ExpenseDetails = {
   installments: number | null;
   installment_number: number | null;
   parent_expense_id: string | null;
-  categoryName: string;
+  subcategory: {
+    name: string;
+    icon: string;
+    color: string;
+  } | null;
   placeName: string | null;
-  placeKind: string | null;
+  placeKind: PlaceType | null;
   paidByName: string | null;
   cardName: string | null;
   cardType: string | null;
@@ -83,19 +88,9 @@ const PAYMENT_LABELS: Record<string, string> = {
   vale_alimentacao: "Vale alimentacao",
 };
 
-const PLACE_TYPES: Record<string, string> = {
-  mercado: "Mercado",
-  restaurante: "Restaurante",
-  saude: "Saúde",
-  combustivel: "Combustível",
-  transporte: "Transporte",
-  moradia: "Moradia",
-  veiculo: "Veículo",
-  lazer: "Lazer",
-  outro: "Outro",
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
+function getPlaceTypeInfo(type: PlaceType) {
+  return PLACE_TYPE_CONFIG[type] ?? PLACE_TYPE_CONFIG.outros;
+}
 
 type Props = {
   expenseId: string | null;
@@ -117,9 +112,25 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
 
       const { data: expense } = await supabase
         .from("expenses")
-        .select(
-          "id, description, amount, date, scope, notes, receipt_url, payment_method, installments, installment_number, parent_expense_id, category_id, place_id, paid_by, credit_card_id",
-        )
+        .select(`
+          id,
+          description,
+          amount,
+          date,
+          scope,
+          notes,
+          receipt_url,
+          payment_method,
+          installments,
+          installment_number,
+          parent_expense_id,
+
+          subcategory_id,
+
+          place_id,
+          paid_by,
+          credit_card_id
+        `)
         .eq("id", expenseId)
         .single();
 
@@ -129,11 +140,11 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
       }
 
       const [catRes, placeRes, userRes, cardRes, itemsRes] = await Promise.all([
-        expense.category_id
+        expense.subcategory_id
           ? supabase
-              .from("categories")
-              .select("name")
-              .eq("id", expense.category_id)
+              .from("subcategories")
+              .select("name, icon, color")
+              .eq("id", expense.subcategory_id)
               .single()
           : Promise.resolve({ data: null }),
 
@@ -160,45 +171,58 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
               .eq("id", expense.credit_card_id)
               .single()
           : Promise.resolve({ data: null }),
-
+        supabase
+          .from("expense_items")
+          .select(`
+            *,
+            products(name)
+          `)
+          .eq("expense_id", expenseId),
         supabase.from("expense_items").select("*").eq("expense_id", expenseId),
       ]);
 
       const rawItems = itemsRes.data ?? [];
 
-      const normalizedItems: ExpenseItem[] = await Promise.all(
-        rawItems.map(async (raw) => {
-          let productName: string | null = null;
+      const normalizedItems: ExpenseItem[] = rawItems.map((raw) => ({
+        id: raw.id as string,
 
-          if (raw.product_id) {
-            const { data: prod } = await supabase
-              .from("products")
-              .select("name")
-              .eq("id", raw.product_id)
-              .single();
-            productName = prod?.name ?? null;
-          }
+        product_id: raw.product_id as string | null,
 
-          return {
-            id: raw.id as string,
-            product_id: raw.product_id as string | null,
-            productName,
-            quantity: raw.quantity as number | null,
-            unit_price: raw.unit_price as number | null,
-            total_price: raw.total_price as number | null,
-            weight: (raw.weight as number | null) ?? null,
-            price_per_kg: (raw.price_per_kg as number | null) ?? null,
-            measurement_type:
-              (raw.measurement_type as "unit" | "weight" | null) ?? null,
-          };
-        }),
-      );
+        productName:
+          (
+            raw.products as {
+              name?: string;
+            } | null
+          )?.name ?? null,
+
+        quantity: raw.quantity as number | null,
+
+        unit_price: raw.unit_price as number | null,
+
+        total_price: raw.total_price as number | null,
+
+        weight: (raw.weight as number | null) ?? null,
+
+        price_per_kg: (raw.price_per_kg as number | null) ?? null,
+
+        measurement_type:
+          (raw.measurement_type as "unit" | "weight" | null) ?? null,
+      }));
 
       setDetails({
         ...expense,
-        categoryName: catRes.data?.name ?? "Sem categoria",
+        subcategory: catRes.data
+          ? {
+              name: catRes.data.name,
+              icon: catRes.data.icon,
+              color: catRes.data.color,
+            }
+          : null,
         placeName: placeRes.data?.name ?? null,
-        placeKind: (placeRes.data as { type?: string } | null)?.type ?? null,
+        placeKind:
+          ((placeRes.data as { type?: PlaceType } | null)?.type as
+            | PlaceType
+            | undefined) ?? null,
         paidByName: userRes.data?.name ?? null,
         cardName: cardRes.data?.name ?? null,
         cardType:
@@ -293,11 +317,23 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
                   },
                 )}
               />
-              <Row
-                icon={<Tag className="w-4 h-4" />}
-                label="Categoria"
-                value={details.categoryName}
-              />
+              {details.subcategory && (
+                <div className="flex items-start gap-3">
+                  <div className="text-muted-foreground mt-0.5 shrink-0">
+                    <Tag className="w-4 h-4" />
+                  </div>
+
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      Subcategoria
+                    </p>
+
+                    <Badge className={details.subcategory.color}>
+                      {details.subcategory.name}
+                    </Badge>
+                  </div>
+                </div>
+              )}
               {details.paidByName && (
                 <Row
                   icon={<User className="w-4 h-4" />}
@@ -323,15 +359,33 @@ export function GastoDetalhesModal({ expenseId, open, onClose }: Props) {
                 />
               )}
               {details.placeName && (
-                <Row
-                  icon={<MapPin className="w-4 h-4" />}
-                  label="Local"
-                  value={
-                    details.placeKind
-                      ? `${details.placeName} - ${PLACE_TYPES[details.placeKind] ?? details.placeKind}`
-                      : details.placeName
-                  }
-                />
+                <div className="flex items-start gap-3">
+                  <div className="text-muted-foreground mt-0.5 shrink-0">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-xs text-muted-foreground">Local</p>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium">{details.placeName}</p>
+
+                      {details.placeKind &&
+                        (() => {
+                          const config = getPlaceTypeInfo(details.placeKind);
+
+                          const Icon = config.icon;
+
+                          return (
+                            <Badge className={`text-xs ${config.color}`}>
+                              <Icon className="w-3 h-3 mr-1" />
+                              {config.label}
+                            </Badge>
+                          );
+                        })()}
+                    </div>
+                  </div>
+                </div>
               )}
               {isInstallment && (
                 <Row

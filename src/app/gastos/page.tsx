@@ -1,25 +1,14 @@
 "use client";
 
-import {
-  Car,
-  Eye,
-  Fuel,
-  Home,
-  PartyPopper,
-  Pill,
-  Plus,
-  Receipt,
-  ShoppingCart,
-  Trash2,
-  UtensilsCrossed,
-} from "lucide-react";
+import { Eye, Plus, Receipt, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { GastoDetalhesModal } from "@/components/gasto-detalhes-modal";
 import { NovoGastoModal } from "@/components/novo-gasto";
-import type {
-  Category,
-  PlaceType,
-  ScopeType,
+import {
+  PLACE_TYPE_CONFIG,
+  type Category,
+  type PlaceType,
+  type ScopeType,
 } from "@/components/novo-gasto/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,33 +75,6 @@ const scopeColor: Record<ScopeType, string> = {
   hers: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
 };
 
-const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
-  mercado: "Mercado",
-  restaurante: "Restaurante",
-  saude: "Saúde",
-  combustivel: "Combustível",
-  transporte: "Transporte",
-  moradia: "Moradia",
-  veiculo: "Veículo",
-  lazer: "Lazer",
-  outro: "Outro",
-};
-
-const PLACE_TYPE_ICONS: Record<
-  PlaceType,
-  React.ComponentType<{ className?: string }>
-> = {
-  mercado: ShoppingCart,
-  restaurante: UtensilsCrossed,
-  saude: Pill,
-  combustivel: Fuel,
-  transporte: Car,
-  moradia: Home,
-  veiculo: Car,
-  lazer: PartyPopper,
-  outro: Receipt,
-};
-
 export default function GastosPage() {
   const now = new Date();
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -146,7 +108,6 @@ export default function GastosPage() {
       Number(filterMonth) === 12 ? Number(filterYear) + 1 : Number(filterYear);
     const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
 
-    // CORREÇÃO: Incluir os relacionamentos na query do Supabase
     let query = supabase
       .from("expenses")
       .select(
@@ -276,7 +237,6 @@ export default function GastosPage() {
         </Button>
       </div>
 
-      {/* Filtros */}
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3">
@@ -473,12 +433,14 @@ export default function GastosPage() {
                               <span>•</span>
 
                               {(() => {
-                                const PlaceIcon =
-                                  PLACE_TYPE_ICONS[expense.place.type];
+                                const placeConfig =
+                                  PLACE_TYPE_CONFIG[expense.place.type];
+
+                                const IconComponent = placeConfig.icon;
 
                                 return (
                                   <div className="flex items-center gap-1">
-                                    <PlaceIcon className="w-3 h-3 text-muted-foreground" />
+                                    <IconComponent className="w-3 h-3 text-muted-foreground" />
 
                                     <Badge
                                       variant="outline"
@@ -488,10 +450,9 @@ export default function GastosPage() {
                                     </Badge>
 
                                     <Badge
-                                      variant="secondary"
-                                      className="h-5 text-[10px]"
+                                      className={`h-5 text-[10px] ${placeConfig.color}`}
                                     >
-                                      {PLACE_TYPE_LABELS[expense.place.type]}
+                                      {placeConfig.label}
                                     </Badge>
                                   </div>
                                 );
