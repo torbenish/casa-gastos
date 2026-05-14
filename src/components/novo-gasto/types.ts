@@ -33,7 +33,6 @@ import {
   Hammer,
   Hand,
   Heart,
-  HeartPulse,
   Home,
   IceCream,
   Key,
@@ -181,26 +180,6 @@ export type PlaceType =
   | "floricultora"
   | "outros";
 
-// ============================================================================
-// PROVIDER TYPES (EMPRESAS / INSTITUIÇÕES)
-// ============================================================================
-
-export type ProviderType =
-  | "banco"
-  | "financeira"
-  | "seguro"
-  | "energia"
-  | "agua"
-  | "gas"
-  | "internet"
-  | "telefonia"
-  | "imobiliaria"
-  | "condominio"
-  | "governo"
-  | "streaming"
-  | "educacao"
-  | "saude"
-  | "outros";
 export type CategoryType =
   | "alimentacao"
   | "moradia"
@@ -254,8 +233,6 @@ export type Subcategory = {
 
   requires_place: boolean;
 
-  requires_provider: boolean;
-
   created_at: string;
 
   updated_at: string;
@@ -287,26 +264,6 @@ export type Place = {
 };
 
 // ============================================================================
-// PROVIDER (EMPRESA / INSTITUIÇÃO)
-// ============================================================================
-
-export type Provider = {
-  id: string;
-
-  name: string;
-
-  type: ProviderType;
-
-  created_at: string;
-
-  is_favorite?: boolean;
-
-  usageCount?: number;
-
-  lastUsedAt?: string | null;
-};
-
-// ============================================================================
 // AGGREGATED TYPES
 // ============================================================================
 
@@ -319,22 +276,6 @@ export type PlaceWithExpenses = {
   expenses: {
     id: string;
     created_at: string;
-  }[];
-};
-
-export type ProviderWithExpenses = {
-  id: string;
-
-  name: string;
-
-  type: ProviderType;
-
-  created_at: string;
-
-  is_favorite: boolean;
-
-  expenses: {
-    id: string;
   }[];
 };
 
@@ -365,7 +306,6 @@ export type FieldErrors = {
   subcategoryId?: string;
   paidById?: string;
   placeId?: string;
-  providerId?: string;
 };
 
 // ============================================================================
@@ -1039,100 +979,6 @@ export const PLACE_TYPE_GROUPS: {
 ];
 
 // ============================================================================
-// PROVIDER CONFIG
-// ============================================================================
-
-export const PROVIDER_TYPE_CONFIG: Record<
-  ProviderType,
-  {
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    color: string;
-  }
-> = {
-  banco: {
-    label: "Banco",
-    icon: Building2,
-    color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  },
-  financeira: {
-    label: "Financeira",
-    icon: Wallet,
-    color:
-      "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300",
-  },
-  seguro: {
-    label: "Seguradora",
-    icon: Shield,
-    color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  },
-  energia: {
-    label: "Energia Elétrica",
-    icon: Zap,
-    color:
-      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  },
-  agua: {
-    label: "Água e Esgoto",
-    icon: Droplet,
-    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
-  },
-  gas: {
-    label: "Gás",
-    icon: Flame,
-    color:
-      "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  },
-  internet: {
-    label: "Internet",
-    icon: Wifi,
-    color:
-      "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
-  },
-  telefonia: {
-    label: "Telefonia",
-    icon: Phone,
-    color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  },
-  imobiliaria: {
-    label: "Imobiliária/Aluguel",
-    icon: Building,
-    color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  },
-  condominio: {
-    label: "Condomínio",
-    icon: Building2,
-    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
-  },
-  governo: {
-    label: "Governo/Impostos",
-    icon: Landmark,
-    color: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300",
-  },
-  streaming: {
-    label: "Streaming",
-    icon: Tv,
-    color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  },
-  educacao: {
-    label: "Educação",
-    icon: GraduationCap,
-    color:
-      "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300",
-  },
-  saude: {
-    label: "Plano de Saúde",
-    icon: HeartPulse,
-    color: "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300",
-  },
-  outros: {
-    label: "Outros",
-    icon: MoreHorizontal,
-    color: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300",
-  },
-};
-
-// ============================================================================
 // PAYMENT METHODS
 // ============================================================================
 
@@ -1177,14 +1023,6 @@ export function getPlaceTypeLabel(type: PlaceType): string {
   return PLACE_TYPE_CONFIG[type]?.label || type;
 }
 
-export function getProviderTypeLabel(type: ProviderType): string {
-  return PROVIDER_TYPE_CONFIG[type]?.label || type;
-}
-
 export function subcategoryRequiresPlace(subcategory: Subcategory): boolean {
   return subcategory.requires_place;
-}
-
-export function subcategoryRequiresProvider(subcategory: Subcategory): boolean {
-  return subcategory.requires_provider;
 }

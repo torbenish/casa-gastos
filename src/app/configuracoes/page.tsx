@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Building2,
   MapPin,
   Pencil,
   Plus,
