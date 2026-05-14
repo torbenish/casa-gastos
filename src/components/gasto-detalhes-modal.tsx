@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase";
-import { PLACE_TYPE_CONFIG, PlaceType } from "./novo-gasto/types";
+import { PLACE_TYPE_CONFIG, type PlaceType } from "./novo-gasto/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

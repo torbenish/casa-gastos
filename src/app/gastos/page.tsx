@@ -5,8 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { GastoDetalhesModal } from "@/components/gasto-detalhes-modal";
 import { NovoGastoModal } from "@/components/novo-gasto";
 import {
-  PLACE_TYPE_CONFIG,
   type Category,
+  PLACE_TYPE_CONFIG,
   type PlaceType,
   type ScopeType,
 } from "@/components/novo-gasto/types";

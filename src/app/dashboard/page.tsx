@@ -226,11 +226,6 @@ export default function DashboardPage() {
     (summary?.total_mine ?? 0) +
     (summary?.total_hers ?? 0);
 
-  const jointPercentage =
-    totalMonthExpenses > 0
-      ? ((summary?.total_joint ?? 0) / totalMonthExpenses) * 100
-      : 0;
-
   const minePercentage =
     totalMonthExpenses > 0
       ? ((summary?.total_mine ?? 0) / totalMonthExpenses) * 100

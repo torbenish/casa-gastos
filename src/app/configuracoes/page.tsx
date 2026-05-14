@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Building2,
   MapPin,
   Pencil,
   Plus,
@@ -12,6 +13,13 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  PLACE_TYPE_CONFIG,
+  PLACE_TYPE_GROUPS,
+  type Place,
+  type PlaceType,
+  type PlaceWithExpenses,
+} from "@/components/novo-gasto/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,19 +47,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase";
-import {
-  PLACE_TYPE_CONFIG,
-  PLACE_TYPE_GROUPS,
-  PlaceWithExpenses,
-  type Place,
-  type PlaceType,
-} from "@/components/novo-gasto/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type Tab = "locais";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -99,15 +97,11 @@ function PlaceModal({
   useEffect(() => {
     if (open) {
       setName(place?.name ?? "");
-
       const currentType = (place?.type as PlaceType) ?? "outros";
-
       setType(currentType);
-
       const foundGroup = PLACE_TYPE_GROUPS.find((group) =>
         group.items.includes(currentType),
       );
-
       setGroup(foundGroup?.label ?? "");
     }
   }, [open, place]);
@@ -122,7 +116,6 @@ function PlaceModal({
     }
 
     const normalizedName = normalizeText(name);
-
     const duplicate = places.find((p) => {
       if (place && p.id === place.id) return false;
       return normalizeText(p.name) === normalizedName;
@@ -136,7 +129,6 @@ function PlaceModal({
     setSaving(true);
 
     if (place) {
-      // Editar
       const { error } = await supabase
         .from("places")
         .update({ name: name.trim(), type })
@@ -150,7 +142,6 @@ function PlaceModal({
         onClose();
       }
     } else {
-      // Criar
       const { error } = await supabase
         .from("places")
         .insert({ name: name.trim(), type });
@@ -191,29 +182,28 @@ function PlaceModal({
           </div>
 
           <div className="space-y-1.5">
-            <div className="space-y-1.5">
-              <Label>Grupo do local *</Label>
+            <Label>Grupo do local *</Label>
+            <Select
+              value={group}
+              onValueChange={(value) => {
+                setGroup(value);
+                setType("");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um grupo" />
+              </SelectTrigger>
+              <SelectContent>
+                {PLACE_TYPE_GROUPS.map((group) => (
+                  <SelectItem key={group.label} value={group.label}>
+                    {group.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <Select
-                value={group}
-                onValueChange={(value) => {
-                  setGroup(value);
-                  setType("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um grupo" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {PLACE_TYPE_GROUPS.map((group) => (
-                    <SelectItem key={group.label} value={group.label}>
-                      {group.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
             <Label>Tipo do local *</Label>
             <Select
               value={type || undefined}
@@ -231,7 +221,6 @@ function PlaceModal({
                 {availableTypes.map((item) => {
                   const config = PLACE_TYPE_CONFIG[item];
                   const Icon = config.icon;
-
                   return (
                     <SelectItem key={item} value={item}>
                       <div className="flex items-center gap-2">
@@ -247,7 +236,6 @@ function PlaceModal({
             {type && (
               <div className="flex items-center gap-2 pt-1">
                 <p className="text-xs text-muted-foreground">Aparecerá como:</p>
-
                 <Badge
                   variant="outline"
                   className={`text-xs ${getPlaceTypeInfo(type).color}`}
@@ -301,31 +289,28 @@ function LocalesSection() {
     const { data } = await supabase
       .from("places")
       .select(`
-    id,
-    name,
-    type,
-    created_at,
-    is_favorite,
-    expenses (id, created_at)
-  `)
+        id,
+        name,
+        type,
+        created_at,
+        is_favorite,
+        expenses (id, created_at)
+      `)
       .order("name");
     if (data) {
       const typedData = data as PlaceWithExpenses[];
       const enriched: Place[] = typedData.map((place) => {
         const expenses = place.expenses ?? [];
-
         const sortedExpenses = [...expenses].sort(
           (a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         );
-
         return {
           ...place,
           usageCount: expenses.length,
           lastUsedAt: sortedExpenses[0]?.created_at ?? null,
         };
       });
-
       setPlaces(enriched);
     }
     setLoading(false);
@@ -337,7 +322,6 @@ function LocalesSection() {
 
   async function handleDelete(place: Place) {
     const { error } = await supabase.from("places").delete().eq("id", place.id);
-
     if (error) {
       toast.error("Erro ao excluir. Este local pode estar em uso em gastos.");
     } else {
@@ -349,41 +333,31 @@ function LocalesSection() {
 
   async function toggleFavorite(place: Place) {
     const newValue = !place.is_favorite;
-
-    // ✅ Atualiza UI imediatamente
     setPlaces((prev) =>
       prev.map((p) =>
         p.id === place.id ? { ...p, is_favorite: newValue } : p,
       ),
     );
-
-    // 🔁 Persiste no backend
     const { error } = await supabase
       .from("places")
       .update({ is_favorite: newValue })
       .eq("id", place.id);
-
-    // ❌ Se der erro, desfaz
     if (error) {
       setPlaces((prev) =>
         prev.map((p) =>
           p.id === place.id ? { ...p, is_favorite: !newValue } : p,
         ),
       );
-
       toast.error("Erro ao favoritar");
     }
   }
 
   const filtered = places.filter((p) => {
     const normalizedSearch = normalizeText(search);
-
     const matchSearch = normalizedSearch
       .split(" ")
       .every((term) => normalizeText(p.name).includes(term));
-
     const matchType = filterType === "all" || p.type === filterType;
-
     return matchSearch && matchType;
   });
 
@@ -391,27 +365,17 @@ function LocalesSection() {
     if ((b.is_favorite ? 1 : 0) !== (a.is_favorite ? 1 : 0)) {
       return (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0);
     }
-
-    if (sortBy === "name") {
-      return a.name.localeCompare(b.name);
-    }
-
-    if (sortBy === "recent") {
+    if (sortBy === "name") return a.name.localeCompare(b.name);
+    if (sortBy === "recent")
       return (
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-    }
-
-    if (sortBy === "usage") {
-      return (b.usageCount ?? 0) - (a.usageCount ?? 0);
-    }
-
+    if (sortBy === "usage") return (b.usageCount ?? 0) - (a.usageCount ?? 0);
     return 0;
   });
 
   const grouped = PLACE_TYPE_GROUPS.map((group) => ({
     ...group,
-
     places: sorted.filter((p) => group.items.includes(p.type)),
   })).filter((group) => group.places.length > 0);
 
@@ -444,10 +408,8 @@ function LocalesSection() {
                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                   {group.label}
                 </div>
-
                 {group.items.map((item) => {
                   const config = PLACE_TYPE_CONFIG[item];
-
                   return (
                     <SelectItem key={item} value={item}>
                       {config.label}
@@ -483,7 +445,6 @@ function LocalesSection() {
         </Button>
       </div>
 
-      {/* Contagem */}
       {!loading && (
         <p className="text-xs text-muted-foreground mb-4">
           {filtered.length} local{filtered.length !== 1 ? "is" : ""} encontrado
@@ -493,7 +454,6 @@ function LocalesSection() {
         </p>
       )}
 
-      {/* Lista agrupada */}
       {loading ? (
         <div className="flex justify-center py-12 text-muted-foreground text-sm">
           Carregando...
@@ -516,13 +476,10 @@ function LocalesSection() {
         <div className="space-y-6">
           {grouped.map((group) => {
             const firstType = group.items[0] as PlaceType;
-
             const groupConfig = PLACE_TYPE_CONFIG[firstType];
-
             const Icon = groupConfig.icon;
             return (
               <div key={group.label}>
-                {/* Header do grupo */}
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`p-1.5 rounded-lg ${groupConfig.color}`}>
                     <Icon className="w-3.5 h-3.5" />
@@ -533,7 +490,6 @@ function LocalesSection() {
                   </span>
                 </div>
 
-                {/* Cards do grupo */}
                 <div className="space-y-1 pl-1">
                   {group.places.map((place) => (
                     <div
@@ -574,7 +530,6 @@ function LocalesSection() {
                         </div>
                       </div>
 
-                      {/* Ações — aparecem no hover */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3">
                         <Button
                           type="button"
@@ -607,7 +562,6 @@ function LocalesSection() {
         </div>
       )}
 
-      {/* Modal criar/editar */}
       <PlaceModal
         open={modalOpen}
         place={editingPlace}
@@ -619,7 +573,6 @@ function LocalesSection() {
         onSaved={load}
       />
 
-      {/* Confirmação de exclusão */}
       <AlertDialog
         open={!!deletingPlace}
         onOpenChange={() => setDeletingPlace(null)}
@@ -632,8 +585,7 @@ function LocalesSection() {
               <span className="font-semibold text-foreground">
                 {deletingPlace?.name}
               </span>
-              ? Gastos associados a este local não serão afetados, mas o local
-              não aparecerá mais para seleção.
+              ? Gastos associados a este local não serão afetados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -653,17 +605,7 @@ function LocalesSection() {
 
 // ─── Page principal ───────────────────────────────────────────────────────────
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  {
-    id: "locais",
-    label: "Locais",
-    icon: <MapPin className="w-4 h-4" />,
-  },
-];
-
 export default function ConfiguracoesPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("locais");
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -674,31 +616,12 @@ export default function ConfiguracoesPage() {
         <div>
           <h1 className="text-2xl font-semibold">Configurações</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Gerencie locais, categorias e preferências do sistema
+            Gerencie locais e preferências do sistema
           </p>
         </div>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as Tab)}
-      >
-        <TabsList className="grid w-fit grid-cols-1">
-          {TABS.map((tab) => (
-            <TabsTrigger
-              key={tab.id}
-              value={tab.id}
-              className="flex items-center gap-2"
-            >
-              {tab.icon}
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
-      {/* Conteúdo da aba */}
-      <div>{activeTab === "locais" && <LocalesSection />}</div>
+      <LocalesSection />
     </div>
   );
 }

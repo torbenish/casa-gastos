@@ -1,75 +1,75 @@
 import {
-  ShoppingCart,
-  Utensils,
-  Coffee,
-  Store,
-  IceCream,
+  Activity,
+  Apple,
+  Beef,
   Beer,
   Bike,
-  Pill,
-  Stethoscope,
-  Cross,
-  FlaskConical,
-  Smile,
-  Dumbbell,
-  Fuel,
-  ParkingCircle,
-  Wrench,
-  Sparkles,
-  Package,
-  Film,
-  Drama,
-  Trees,
-  Building2,
-  School,
-  GraduationCap,
-  BookOpen,
   Book,
-  Shirt,
-  Footprints,
-  Watch,
-  Heart,
-  ShoppingBag,
-  Scissors,
-  Gift,
-  MoreHorizontal,
-  Wallet,
-  Shield,
-  Zap,
-  Droplet,
-  Wifi,
-  Phone,
+  BookOpen,
   Building,
-  Landmark,
-  Tv,
+  Building2,
+  Cake,
+  CircleDot,
+  ClipboardCheck,
+  Clock,
+  Coffee,
+  Cross,
+  Drama,
+  Droplet,
+  Dumbbell,
+  FileSignature,
+  FileText,
+  Film,
+  Flame,
+  FlaskConical,
+  FlaskRound,
+  Flower2,
+  Footprints,
+  Fuel,
+  Gem,
+  Gift,
+  Glasses,
+  GraduationCap,
+  Hammer,
+  Hand,
+  Heart,
   HeartPulse,
   Home,
-  Beef,
-  Apple,
-  Cake,
-  FlaskRound,
-  Glasses,
-  Activity,
-  CircleDot,
-  FileText,
-  ClipboardCheck,
-  Trophy,
-  Pencil,
-  Clock,
-  Gem,
-  Hand,
-  Syringe,
-  Mail,
-  FileSignature,
-  Ticket,
-  WashingMachine,
+  IceCream,
   Key,
-  Hammer,
-  Sofa,
+  Landmark,
+  Mail,
   Monitor,
+  MoreHorizontal,
+  Package,
+  ParkingCircle,
+  Pencil,
+  Phone,
+  Pill,
+  School,
+  Scissors,
   Settings,
-  Flower2,
-  Flame,
+  Shield,
+  Shirt,
+  ShoppingBag,
+  ShoppingCart,
+  Smile,
+  Sofa,
+  Sparkles,
+  Stethoscope,
+  Store,
+  Syringe,
+  Ticket,
+  Trees,
+  Trophy,
+  Tv,
+  Utensils,
+  Wallet,
+  WashingMachine,
+  Watch,
+  Wifi,
+  Wrench,
+  Zap,
 } from "lucide-react";
 
 // ... (manter CategoryType, ScopeType, PaymentMethod como estão)
@@ -158,6 +158,17 @@ export type PlaceType =
   | "lavanderia"
   | "chaveiro"
   | "costureira"
+  | "energia"
+  | "agua"
+  | "gas"
+  | "internet"
+  | "telefonia"
+  | "streaming"
+  | "seguro"
+  | "financeira"
+  | "condominio"
+  | "imobiliaria"
+  | "governo"
 
   // Casa e Moradia
   | "mercado_construcao"
@@ -317,6 +328,8 @@ export type ProviderWithExpenses = {
   name: string;
 
   type: ProviderType;
+
+  created_at: string;
 
   is_favorite: boolean;
 
@@ -814,6 +827,75 @@ export const PLACE_TYPE_CONFIG: Record<
     icon: MoreHorizontal,
     color: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300",
   },
+  energia: {
+    label: "Energia Elétrica",
+    icon: Zap,
+    color:
+      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+  },
+
+  agua: {
+    label: "Água e Esgoto",
+    icon: Droplet,
+    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
+  },
+
+  gas: {
+    label: "Gás",
+    icon: Flame,
+    color:
+      "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+  },
+
+  internet: {
+    label: "Internet",
+    icon: Wifi,
+    color:
+      "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+  },
+
+  telefonia: {
+    label: "Telefonia",
+    icon: Phone,
+    color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+  },
+
+  streaming: {
+    label: "Streaming",
+    icon: Tv,
+    color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+  },
+
+  seguro: {
+    label: "Seguradora",
+    icon: Shield,
+    color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+  },
+
+  financeira: {
+    label: "Financeira",
+    icon: Wallet,
+    color:
+      "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300",
+  },
+
+  condominio: {
+    label: "Condomínio",
+    icon: Building2,
+    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300",
+  },
+
+  imobiliaria: {
+    label: "Imobiliária/Aluguel",
+    icon: Building,
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+  },
+
+  governo: {
+    label: "Governo/Impostos",
+    icon: Landmark,
+    color: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300",
+  },
 };
 
 export const PLACE_TYPE_GROUPS: {
@@ -822,8 +904,9 @@ export const PLACE_TYPE_GROUPS: {
 }[] = [
   {
     label: "Moradia",
-    items: ["residencia"],
+    items: ["residencia", "condominio", "imobiliaria"],
   },
+
   {
     label: "Alimentação",
     items: [
@@ -840,6 +923,7 @@ export const PLACE_TYPE_GROUPS: {
       "delivery_app",
     ],
   },
+
   {
     label: "Saúde",
     items: [
@@ -852,8 +936,10 @@ export const PLACE_TYPE_GROUPS: {
       "otica",
       "academia",
       "fisioterapia",
+      "seguro",
     ],
   },
+
   {
     label: "Transporte e Veículo",
     items: [
@@ -867,14 +953,25 @@ export const PLACE_TYPE_GROUPS: {
       "vistoria",
     ],
   },
+
   {
-    label: "Lazer",
-    items: ["cinema", "teatro", "parque", "shopping", "clube", "museu"],
+    label: "Lazer e Entretenimento",
+    items: [
+      "cinema",
+      "teatro",
+      "parque",
+      "shopping",
+      "clube",
+      "museu",
+      "streaming",
+    ],
   },
+
   {
     label: "Educação",
     items: ["escola", "faculdade", "curso", "livraria", "papelaria"],
   },
+
   {
     label: "Vestuário",
     items: [
@@ -885,10 +982,12 @@ export const PLACE_TYPE_GROUPS: {
       "joalheria",
     ],
   },
+
   {
     label: "Pets",
     items: ["veterinario", "pet_shop", "banho_tosa"],
   },
+
   {
     label: "Beleza",
     items: [
@@ -899,18 +998,30 @@ export const PLACE_TYPE_GROUPS: {
       "manicure",
     ],
   },
+
   {
-    label: "Serviços",
+    label: "Serviços e Contas",
     items: [
-      "banco",
+      "energia",
+      "agua",
+      "gas",
+      "internet",
+      "telefonia",
       "correios",
-      "loteria",
       "cartorio",
+      "loteria",
       "lavanderia",
       "chaveiro",
       "costureira",
+      "governo",
     ],
   },
+
+  {
+    label: "Financeiro",
+    items: ["banco", "financeira"],
+  },
+
   {
     label: "Casa e Construção",
     items: [
@@ -920,6 +1031,7 @@ export const PLACE_TYPE_GROUPS: {
       "assistencia_tecnica",
     ],
   },
+
   {
     label: "Outros",
     items: ["loja_presentes", "floricultora", "outros"],

@@ -124,7 +124,7 @@ export function useNovoGasto(
           type: p.type,
           is_favorite: p.is_favorite,
           usageCount: p.expenses?.length ?? 0,
-          created_at: p.created_at, 
+          created_at: p.created_at,
         }));
 
         setAllPlaces(enriched);
