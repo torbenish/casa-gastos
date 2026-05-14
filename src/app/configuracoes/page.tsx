@@ -96,8 +96,8 @@ function PlaceModal({
   useEffect(() => {
     if (open) {
       setName(place?.name ?? "");
-      const currentType = (place?.type as PlaceType) ?? "outros";
-      setType(currentType);
+      const currentType = (place?.type as PlaceType) ?? "";
+      setType(currentType as PlaceType | "");
       const foundGroup = PLACE_TYPE_GROUPS.find((group) =>
         group.items.includes(currentType),
       );
@@ -193,11 +193,13 @@ function PlaceModal({
                 <SelectValue placeholder="Selecione um grupo" />
               </SelectTrigger>
               <SelectContent>
-                {PLACE_TYPE_GROUPS.map((group) => (
-                  <SelectItem key={group.label} value={group.label}>
-                    {group.label}
-                  </SelectItem>
-                ))}
+                {[...PLACE_TYPE_GROUPS]
+                  .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"))
+                  .map((group) => (
+                    <SelectItem key={group.label} value={group.label}>
+                      {group.label}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -217,18 +219,25 @@ function PlaceModal({
                 />
               </SelectTrigger>
               <SelectContent>
-                {availableTypes.map((item) => {
-                  const config = PLACE_TYPE_CONFIG[item];
-                  const Icon = config.icon;
-                  return (
-                    <SelectItem key={item} value={item}>
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4" />
-                        {config.label}
-                      </div>
-                    </SelectItem>
-                  );
-                })}
+                {[...availableTypes]
+                  .sort((a, b) =>
+                    PLACE_TYPE_CONFIG[a].label.localeCompare(
+                      PLACE_TYPE_CONFIG[b].label,
+                      "pt-BR",
+                    ),
+                  )
+                  .map((item) => {
+                    const config = PLACE_TYPE_CONFIG[item];
+                    const Icon = config.icon;
+                    return (
+                      <SelectItem key={item} value={item}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          {config.label}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
               </SelectContent>
             </Select>
 
@@ -373,10 +382,13 @@ function LocalesSection() {
     return 0;
   });
 
-  const grouped = PLACE_TYPE_GROUPS.map((group) => ({
-    ...group,
-    places: sorted.filter((p) => group.items.includes(p.type)),
-  })).filter((group) => group.places.length > 0);
+  const grouped = [...PLACE_TYPE_GROUPS]
+    .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"))
+    .map((group) => ({
+      ...group,
+      places: sorted.filter((p) => group.items.includes(p.type)),
+    }))
+    .filter((group) => group.places.length > 0);
 
   return (
     <>
@@ -402,21 +414,23 @@ function LocalesSection() {
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
             <div className="my-1 border-t" />
-            {PLACE_TYPE_GROUPS.map((group) => (
-              <div key={group.label} className="py-1">
-                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                  {group.label}
+            {[...PLACE_TYPE_GROUPS]
+              .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"))
+              .map((group) => (
+                <div key={group.label} className="py-1">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    {group.label}
+                  </div>
+                  {group.items.map((item) => {
+                    const config = PLACE_TYPE_CONFIG[item];
+                    return (
+                      <SelectItem key={item} value={item}>
+                        {config.label}
+                      </SelectItem>
+                    );
+                  })}
                 </div>
-                {group.items.map((item) => {
-                  const config = PLACE_TYPE_CONFIG[item];
-                  return (
-                    <SelectItem key={item} value={item}>
-                      {config.label}
-                    </SelectItem>
-                  );
-                })}
-              </div>
-            ))}
+              ))}
           </SelectContent>
         </Select>
 
@@ -490,70 +504,75 @@ function LocalesSection() {
                 </div>
 
                 <div className="space-y-1 pl-1">
-                  {group.places.map((place) => (
-                    <div
-                      key={place.id}
-                      className="flex items-center justify-between py-3 px-4 rounded-xl border hover:border-violet-200 dark:hover:border-violet-800 hover:bg-muted/30 transition-all group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`p-1.5 rounded-lg ${groupConfig.color} shrink-0`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={`h-7 w-7 ${
-                            place.is_favorite
-                              ? "text-yellow-500"
-                              : "text-muted-foreground opacity-40"
-                          }`}
-                          onClick={() => toggleFavorite(place)}
-                        >
-                          <Star className="w-4 h-4" />
-                        </Button>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {place.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {place.usageCount && place.usageCount > 0
-                              ? `Usado ${place.usageCount}x`
-                              : "Nunca utilizado"}
-                            {place.lastUsedAt &&
-                              ` • Último uso: ${formatDate(place.lastUsedAt)}`}
-                            {` • Cadastrado em ${formatDate(place.created_at)}`}
-                          </p>
-                        </div>
-                      </div>
+                  {group.places.map((place) => {
+                    const placeConfig = PLACE_TYPE_CONFIG[place.type];
+                    const PlaceIcon = placeConfig.icon;
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          onClick={() => {
-                            setEditingPlace(place);
-                            setModalOpen(true);
-                          }}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => setDeletingPlace(place)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                    return (
+                      <div
+                        key={place.id}
+                        className="flex items-center justify-between py-3 px-4 rounded-xl border hover:border-violet-200 dark:hover:border-violet-800 hover:bg-muted/30 transition-all group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`p-1.5 rounded-lg ${placeConfig.color} shrink-0`}
+                          >
+                            <PlaceIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={`h-7 w-7 ${
+                              place.is_favorite
+                                ? "text-yellow-500"
+                                : "text-muted-foreground opacity-40"
+                            }`}
+                            onClick={() => toggleFavorite(place)}
+                          >
+                            <Star className="w-4 h-4" />
+                          </Button>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {place.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {place.usageCount && place.usageCount > 0
+                                ? `Usado ${place.usageCount}x`
+                                : "Nunca utilizado"}
+                              {place.lastUsedAt &&
+                                ` • Último uso: ${formatDate(place.lastUsedAt)}`}
+                              {` • Cadastrado em ${formatDate(place.created_at)}`}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              setEditingPlace(place);
+                              setModalOpen(true);
+                            }}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeletingPlace(place)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
