@@ -9,6 +9,7 @@ import {
   Building,
   Building2,
   Cake,
+  Car,
   CircleDot,
   ClipboardCheck,
   Clock,
@@ -114,6 +115,7 @@ export type PlaceType =
   | "borracharia"
   | "despachante"
   | "vistoria"
+  | "transporte_app"
 
   // Lazer
   | "cinema"
@@ -531,6 +533,12 @@ export const PLACE_TYPE_CONFIG: Record<
     color:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
   },
+  transporte_app: {
+    label: "Transporte por App",
+    icon: Car,
+    color:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
+  },
 
   // ============================================================================
   // LAZER
@@ -891,6 +899,7 @@ export const PLACE_TYPE_GROUPS: {
       "borracharia",
       "despachante",
       "vistoria",
+      "transporte_app"
     ],
   },
 
