@@ -33,6 +33,7 @@ import {
   PAYMENT_METHODS,
   parseCurrency,
 } from "./types";
+import { CampoProduto } from "./components/campo-produto";
 
 type Props = {
   open: boolean;
@@ -170,14 +171,16 @@ export function NovoGastoModal({ open, onClose, onSaved, categories }: Props) {
                   {/* Linha principal */}
                   <div className="grid grid-cols-12 gap-2 items-center">
                     {/* Produto */}
-                    <Input
-                      placeholder="Ex: Batata"
+                    <CampoProduto
                       value={item.name}
-                      onChange={(e) => {
+                      productId={item.product_id ?? ""}
+                      onChange={(name, pid) => {
                         const updated = [...g.items];
-                        updated[index].name = e.target.value;
+                        updated[index].name = name;
+                        updated[index].product_id = pid;
                         g.setItems(updated);
                       }}
+                      placeholder="Ex: Arroz"
                       className="col-span-5"
                     />
 
