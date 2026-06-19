@@ -573,10 +573,9 @@ async function generatePDF(
 
   const topExpenses = [...data.expenses]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 30);
 
   topExpenses.forEach((exp, i) => {
-    if (y > 270) {
+    if (y > 275) {
       doc.addPage();
       y = 20;
     }
@@ -613,18 +612,6 @@ async function generatePDF(
 
     y += 7;
   });
-
-  if (data.expenses.length > 30) {
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(...gray);
-    doc.text(
-      `… e mais ${data.expenses.length - 30} lançamentos`,
-      margin + 2,
-      y + 4,
-    );
-    y += 8;
-  }
 
   // ── Rodapé ──
   const pageCount = doc.getNumberOfPages();

@@ -1,10 +1,10 @@
 "use client";
-
 import {
   BarChart3,
   Home,
   LayoutDashboard,
   LogOut,
+  Package,
   Receipt,
   Settings,
   ShoppingCart,
@@ -19,21 +19,19 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/gastos", label: "Gastos", icon: Receipt },
   { href: "/mercados", label: "Mercados", icon: ShoppingCart },
+  { href: "/produtos", label: "Produtos", icon: Package },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
-
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
   }
-
   return (
     <aside className="flex flex-col w-64 min-h-screen border-r bg-card px-4 py-6">
       {/* Logo + Theme */}
@@ -44,10 +42,8 @@ export function Sidebar() {
           </div>
           <span className="font-semibold text-lg">Casa Gastos</span>
         </div>
-
         <ThemeToggle />
       </div>
-
       {/* Nav */}
       <nav className="flex flex-col gap-1 flex-1">
         {navItems.map((item) => {
@@ -70,7 +66,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-
       {/* Bottom */}
       <div className="flex items-center justify-between px-2 pt-4 border-t">
         <ThemeToggle />
