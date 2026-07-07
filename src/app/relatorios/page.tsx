@@ -571,8 +571,9 @@ async function generatePDF(
   doc.text("Valor", W - margin - 2, y + 4.5, { align: "right" });
   y += 9;
 
-  const topExpenses = [...data.expenses]
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const topExpenses = [...data.expenses].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
 
   topExpenses.forEach((exp, i) => {
     if (y > 275) {

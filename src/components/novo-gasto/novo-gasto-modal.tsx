@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { CampoCartao } from "./components/campo-cartao";
 import { CampoLocal } from "./components/campo-local";
+import { CampoProduto } from "./components/campo-produto";
 import { useNovoGasto } from "./hooks/use-novo-gasto";
 import {
   type Category,
@@ -33,7 +34,6 @@ import {
   PAYMENT_METHODS,
   parseCurrency,
 } from "./types";
-import { CampoProduto } from "./components/campo-produto";
 
 type Props = {
   open: boolean;
@@ -55,7 +55,11 @@ export function NovoGastoModal({ open, onClose, onSaved, categories }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={g.handleClose}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Novo gasto</DialogTitle>
